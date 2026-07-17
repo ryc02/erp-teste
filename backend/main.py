@@ -736,15 +736,31 @@ def check_health(db: Session = Depends(get_db)):
 def get_frontend_path():
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, "frontend")
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend_react", "dist")
 
 frontend_path = get_frontend_path()
+
 if os.path.exists(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+    
+    # Mount specific asset folders if needed, or just let the catch-all handle it
+    # We will use a catch-all route for the SPA
+    
+    @app.get("/{full_path:path}")
+    def serve_react_app(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+            
+        requested_file = os.path.join(frontend_path, full_path)
+        if os.path.isfile(requested_file):
+            return FileResponse(requested_file)
+            
+        return FileResponse(os.path.join(frontend_path, "index.html"))
 else:
     @app.get("/")
     def read_root():
-        return {"message": "ERP Venner Backend Rodando. Frontend não encontrado em /frontend"}
+        return {"message": f"ERP Venner Backend Rodando. Frontend não encontrado em {frontend_path}"}
 
 if __name__ == "__main__":
     import uvicorn
