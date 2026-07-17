@@ -13,3 +13,5 @@ reportlab
 pandas
 openpyxl
 pytz
+requests
+alembic
