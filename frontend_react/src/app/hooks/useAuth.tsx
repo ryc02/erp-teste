@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: { id: number; nome: Role };
   ativo: boolean;
+  permissoes?: string;
 }
 
 interface AuthContextType {
@@ -20,7 +21,7 @@ interface AuthContextType {
   can: (module: string, action: string) => boolean;
 }
 
-// Matriz de permissões por role — mesma lógica anterior, agora alimentada pelo role real do JWT
+// Matriz de permissões por role (fallback para usuários legados que ainda não possuem permissões salvas na string)
 const permissions: Record<string, Record<string, Record<string, boolean>>> = {
   ADMIN: {
     cadastros: { view: true, create: true, edit: true, delete: true, edit_price: true },
@@ -76,9 +77,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // true while checking existing token
+  const [loading, setLoading] = useState(true);
 
-  // On mount: if a token exists, fetch the current user profile
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -92,7 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(username: string, password: string): Promise<void> {
-    // OAuth2PasswordRequestForm requires form-encoded body
     const form = new URLSearchParams();
     form.set("username", username);
     form.set("password", password);
@@ -115,6 +114,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function can(module: string, action: string): boolean {
     if (!user) return false;
     const role = user.role?.nome ?? "";
+    
+    // ADMIN sempre pode ver/fazer tudo
+    if (role === "ADMIN") return true;
+
+    // Se o usuário tem permissões dinâmicas definidas, usamos elas prioritariamente
+    if (user.permissoes !== undefined && user.permissoes !== null) {
+        const permitidos = user.permissoes.split(",").map(s => s.trim());
+        if (permitidos.includes(module)) {
+            return true;
+        }
+        // Se a string existir (mesmo vazia) e não contiver o módulo, barra o acesso.
+        // Exceto se for uma permissão interna específica. Para menu, barra.
+        return false;
+    }
+
+    // Fallback para usuários antigos
     return permissions[role]?.[module]?.[action] ?? false;
   }
 

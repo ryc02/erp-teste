@@ -11,8 +11,31 @@ interface UserItem {
   nome_completo: string;
   ativo: boolean;
   comissao_percentual: number;
+  permissoes?: string;
   role?: Role;
 }
+
+const AVAILABLE_MODULES = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "propostas", label: "Propostas Comerciais" },
+  { id: "pedidos", label: "Pedidos de Venda" },
+  { id: "clientes", label: "Clientes" },
+  { id: "representantes", label: "Representantes" },
+  { id: "produtos", label: "Produtos" },
+  { id: "estoque", label: "Estoque" },
+  { id: "financeiro", label: "Financeiro" },
+  { id: "fiscal", label: "Fiscal / Notas Fiscais" },
+  { id: "faturamento", label: "Faturamento" },
+  { id: "compras", label: "Compras" },
+  { id: "expedicao", label: "Expedição" },
+  { id: "pcp", label: "PCP (Produção)" },
+  { id: "manutencao", label: "Manutenção (OS)" },
+  { id: "produtividade", label: "Produtividade" },
+  { id: "auditoria", label: "Auditoria" },
+  { id: "usuarios", label: "Usuários" },
+  { id: "configuracoes", label: "Configurações" },
+  { id: "relatorios", label: "Relatórios" }
+];
 
 function UsuarioForm({ initial, roles, onClose, onSave }: {
   initial?: UserItem;
@@ -27,9 +50,11 @@ function UsuarioForm({ initial, roles, onClose, onSave }: {
     password: "",
     comissao_percentual: 0,
     ...initial,
-    // override with resolved values for selects
     ativo: initial ? initial.ativo : true,
     role_id: initial?.role?.id ?? (roles[0]?.id ?? 1),
+    permissoes: initial?.permissoes 
+      ? initial.permissoes.split(',').reduce((acc: any, curr: string) => { acc[curr.trim()] = true; return acc; }, {})
+      : {},
   });
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +72,7 @@ function UsuarioForm({ initial, roles, onClose, onSave }: {
     }
     setLoading(true);
     try {
+      const selectedModules = Object.keys(form.permissoes).filter(k => form.permissoes[k]).join(",");
       const payload: any = {
         username: form.username,
         email: form.email,
@@ -54,6 +80,7 @@ function UsuarioForm({ initial, roles, onClose, onSave }: {
         role_id: Number(form.role_id),
         ativo: form.ativo,
         comissao_percentual: Number(form.comissao_percentual),
+        permissoes: selectedModules,
       };
       if (form.password) payload.password = form.password;
 
@@ -106,6 +133,29 @@ function UsuarioForm({ initial, roles, onClose, onSave }: {
             <option value="true">Ativo</option>
             <option value="false">Inativo</option>
           </Select>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold border-b border-border pb-2">Permissões de Módulos</h3>
+        <p className="text-xs text-muted-foreground mb-2">Selecione quais módulos este usuário pode visualizar no menu. (Usuários ADMIN possuem acesso total por padrão).</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 bg-muted/30 p-4 rounded-xl border border-border">
+          {AVAILABLE_MODULES.map(mod => (
+            <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input 
+                type="checkbox"
+                className="rounded border-input text-primary focus:ring-primary/30 w-4 h-4"
+                checked={!!form.permissoes[mod.id]}
+                onChange={(e) => {
+                  setForm(f => ({
+                    ...f,
+                    permissoes: { ...f.permissoes, [mod.id]: e.target.checked }
+                  }));
+                }}
+              />
+              <span className="truncate" title={mod.label}>{mod.label}</span>
+            </label>
+          ))}
         </div>
       </div>
 
