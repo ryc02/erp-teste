@@ -111,7 +111,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Logística e Operações",
     items: [
-      { id: "estoque" as Module, label: "Estoque", icon: Warehouse, badge: "3" },
+      { id: "estoque" as Module, label: "Estoque", icon: Warehouse },
       { id: "expedicao" as Module, label: "Expedição", icon: Truck },
     ],
   },
