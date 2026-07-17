@@ -1,0 +1,89 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="relatorios"></script>
+<!-- VIEW: RELATÓRIOS (PARTIAL) -->
+<section id="view-relatorios" class="view-section active">
+    <div class="flex-between">
+        <h2>Relatórios e Análise de Negócio</h2>
+        <div class="flex-gap">
+            <button class="action-button" onclick="Modulo_relatorios.loadRelatorios()">
+                <i class="ph ph-arrows-clockwise"></i> Atualizar Dados
+            </button>
+            <button class="btn btn-primary" onclick="Modulo_relatorios.exportarEstoqueCSV()">
+                <i class="ph ph-file-csv"></i> Exportar Saldo (CSV)
+            </button>
+        </div>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card" style="border-top-color: var(--info)">
+            <div class="stat-label">Valor Estimado em Estoque</div>
+            <div class="stat-value" id="stat-valor-estoque">R$ ---</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-label">Sugestões de Compra</div>
+            <div class="stat-value" id="stat-sugestoes">0</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Relatório de Eficiência -->
+        <div class="card">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border); font-weight: 600;">
+                Eficiência de Produção (Últimas OPs)
+            </div>
+            <table class="olist-table" id="table-rel-eficiencia">
+                <thead>
+                    <tr>
+                        <th>OP #</th>
+                        <th>Produto</th>
+                        <th>Tempo (h)</th>
+                        <th>Eficiência</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="5" style="text-align:center">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Relatório de Custos -->
+        <div class="card">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border); font-weight: 600;">
+                Análise de Custo Real por Produto
+            </div>
+            <table class="olist-table" id="table-rel-custos">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Qtd</th>
+                        <th>Custo Unit.</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="5" style="text-align:center">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border); font-weight: 600;">
+            Sugestão Automática de Reposição (Abaixo do Mínimo)
+        </div>
+        <table class="olist-table" id="table-sugestoes">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Estoque Atual</th>
+                    <th>Estoque Mínimo</th>
+                    <th>Sugestão Reposição</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="4" style="text-align:center">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>

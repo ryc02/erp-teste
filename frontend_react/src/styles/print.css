@@ -1,0 +1,28 @@
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #printable-area, #printable-area * {
+    visibility: visible;
+  }
+  
+  #printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: white;
+  }
+
+  /* Reset body styling for print */
+  body {
+    background-color: white;
+  }
+
+  @page {
+    margin: 1cm;
+  }
+}

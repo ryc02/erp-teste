@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ERP Venner - Sistema Integrado de Gestão Industrial">
+    <title>ERP Venner - Sistema Integrado</title>
+    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+    <div id="sidebar-container">
+        <aside id="sidebar-primary" role="complementary" aria-label="Menu principal">
+            <div class="logo-area">
+                <div class="logo-container" style="justify-content: center;">
+                    <div class="logo-text-wrapper">
+                        <span class="logo-main" style="font-size: 24px; letter-spacing: 2px;">VENNER</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="nav-menu" id="primary-menu" aria-label="Grupos do sistema">
+                <div class="nav-item active">
+                    <i class="ph ph-circle-notch animate-spin"></i>
+                </div>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="nav-item" title="Suporte" onclick="window.showNotify ? window.showNotify('Para suporte técnico, envie e-mail para: suporte@venner.com.br', 'info') : alert('Suporte: suporte@venner.com.br')"><i class="ph ph-headset"></i> suporte</div>
+            </div>
+        </aside>
+
+        <div id="secondary-backdrop" aria-hidden="true"></div>
+        <aside id="sidebar-secondary" aria-label="Submenus" role="navigation">
+            <div class="secondary-header" id="secondary-title">Menu</div>
+            <nav class="nav-menu" id="secondary-menu"></nav>
+        </aside>
+    </div>
+
+    <main role="main">
+        <header id="topbar">
+            <div class="topbar-left">
+                <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu" aria-expanded="false">
+                    <i class="ph ph-list"></i>
+                </button>
+                <div class="page-title" id="page-current-title">Dashboard</div>
+            </div>
+
+            <div class="user-info">
+                <div class="db-status" id="db-status-container" title="Status do banco de dados">
+                    <div class="db-status-dot" id="db-status-dot"></div>
+                    <span class="db-status-text" id="db-status-text">Verificando BD...</span>
+                </div>
+
+                <div class="topbar-divider" aria-hidden="true"></div>
+
+                <button
+                    type="button"
+                    class="alert-badge"
+                    id="alert-badge-btn"
+                    title="Alertas de estoque"
+                    aria-label="Alertas">
+                    <i class="ph ph-bell"></i>
+                    <span class="badge-count" id="alert-count" aria-live="polite">0</span>
+                </button>
+
+                <div class="topbar-divider" aria-hidden="true"></div>
+
+                <div class="user-block">
+                    <div class="user-meta">
+                        <div class="user-name" id="user-name">Carregando...</div>
+                        <div class="user-role" id="user-role">---</div>
+                    </div>
+                    <button
+                        type="button"
+                        class="user-avatar-btn"
+                        id="user-avatar-btn"
+                        onclick="logout()"
+                        title="Sair do sistema"
+                        aria-label="Sair do sistema">
+                        <span id="user-avatar-initial">?</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div id="content" role="region" aria-label="Conteúdo do módulo" aria-live="polite">
+            <div class="card shell-loading">
+                <i class="ph ph-circle-notch animate-spin"></i>
+                <p>Carregando sistema...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.APP_LOGIN_PATH = '/login.html?target=/index.html';
+    </script>
+    <script src="core/ux-telemetry.js"></script>
+    <script src="core/api.js"></script>
+    <script src="core/ui.js"></script>
+    <script src="core/modules.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

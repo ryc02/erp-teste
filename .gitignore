@@ -1,0 +1,61 @@
+# .gitignore para Python e Node.js
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Ambientes Virtuais (Venv)
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Banco de Dados
+*.sqlite3
+*.db
+erp_venner.db
+
+# Configurações sensíveis e Variáveis de Ambiente
+.env
+.env.local
+.env.*.local
+
+# Node / React
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+.pnpm-store/
+
+# Builds e outputs
+build/
+dist/
+out/
+.next/
+
+# IDEs e Editores
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

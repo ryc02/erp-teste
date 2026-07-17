@@ -1,0 +1,32 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="inventario"></script>
+<!-- VIEW: INVENTÁRIO (PARTIAL) -->
+<section id="view-inventario" class="view-section active">
+    <div class="flex-between">
+        <h2>Sessão de Inventário</h2>
+        <div id="inventario-controls">
+            <!-- Botões dinâmicos aqui -->
+        </div>
+    </div>
+    
+    <div id="inventario-aberto-aviso" style="display:none; padding: 16px; background: rgba(240, 160, 48, 0.1); border: 1px solid var(--warning); border-radius: 8px; margin-bottom: 24px; color: var(--warning);">
+        <i class="ph ph-warning"></i> <strong>Atenção:</strong> Inventário em andamento. Todas as movimentações de estoque estão bloqueadas no sistema.
+    </div>
+
+    <div class="card">
+        <table class="olist-table" id="table-inventario">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Localização</th>
+                    <th>Estoque Sistema</th>
+                    <th>Contagem Física</th>
+                    <th>Diferença</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="5" style="text-align:center">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -1,0 +1,268 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="financeiro"></script>
+<!-- VIEW: FINANCEIRO (PARTIAL) -->
+<section id="view-financeiro" class="view-section" >
+    <!-- BREADCRUMB / HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+            <div style="font-size: 12px; color: #888; margin-bottom: 8px;">
+                início = financeiro <span >gestão</span>
+            </div>
+            <h2 style="margin: 0; font-size: 24px; font-weight: 600; ">Financeiro</h2>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="action-button" onclick="Modulo_financeiro.abrirModalTransferencia()" >
+                transferência <i class="ph ph-arrows-left-right"></i>
+            </button>
+            <button class="btn btn-primary" onclick="Modulo_financeiro.abrirModalNovaConta()" style="border-radius: 8px; font-weight: 600;">
+                nova conta
+            </button>
+            <button class="action-button" onclick="Modulo_financeiro.refresh()"  title="Atualizar">
+                <i class="ph ph-arrows-clockwise"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- DASHBOARD CARDS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 32px;">
+        <div style=" border-left: 4px solid var(--info); padding: 16px; border-radius: 8px;">
+            <div style="font-size: 12px; color: #888; text-transform: uppercase;">A Receber (Pendente)</div>
+            <div style="font-size: 24px; font-weight: 600; margin-top: 8px; " id="fin-a-receber">R$ 0,00</div>
+        </div>
+        <div style=" border-left: 4px solid var(--danger); padding: 16px; border-radius: 8px;">
+            <div style="font-size: 12px; color: #888; text-transform: uppercase;">A Pagar (Pendente)</div>
+            <div style="font-size: 24px; font-weight: 600; margin-top: 8px; " id="fin-a-pagar">R$ 0,00</div>
+        </div>
+        <div style=" border-left: 4px solid var(--success); padding: 16px; border-radius: 8px;">
+            <div style="font-size: 12px; color: #888; text-transform: uppercase;">Saldo em Caixa (Realizado)</div>
+            <div style="font-size: 24px; font-weight: 600; margin-top: 8px; " id="fin-saldo">R$ 0,00</div>
+        </div>
+    </div>
+
+
+    <div style="display: flex; gap: 32px; border-bottom: 1px solid #444; margin-bottom: 24px; padding-bottom: 0;" id="fin-tabs-container">
+        <div class="olist-tab active tab-btn" onclick="Modulo_financeiro.switchTab('receber')">
+            <div style="font-size: 12px; text-transform: lowercase;">a receber</div>
+            <div style="font-size: 14px; font-weight: 600; margin-top: 4px;"><i class="ph ph-arrow-circle-down" style="color: var(--success)"></i> contas</div>
+        </div>
+        <div class="olist-tab tab-btn" onclick="Modulo_financeiro.switchTab('pagar')">
+            <div style="font-size: 12px; text-transform: lowercase;">a pagar</div>
+            <div style="font-size: 14px; font-weight: 600; margin-top: 4px;"><i class="ph ph-arrow-circle-up" style="color: var(--danger)"></i> contas</div>
+        </div>
+        <div class="olist-tab tab-btn" onclick="Modulo_financeiro.switchTab('conciliacao')">
+            <div style="font-size: 12px; text-transform: lowercase;">extrato</div>
+            <div style="font-size: 14px; font-weight: 600; margin-top: 4px;"><i class="ph ph-arrows-merge" style="color: var(--primary)"></i> conciliação</div>
+        </div>
+    </div>
+
+    <!-- TABELA CONTAS -->
+    <div id="card-tabela-contas" style="overflow-x: auto;">
+        <table class="olist-table" id="table-financeiro">
+            <thead>
+                <tr>
+                    <th style="width: 50px;"></th>
+                    <th>Descrição <i class="ph ph-caret-up-down"></i></th>
+                    <th>Cliente/Fornecedor <i class="ph ph-caret-up-down"></i></th>
+                    <th>Vencimento <i class="ph ph-caret-up-down"></i></th>
+                    <th>Categoria / Banco <i class="ph ph-caret-up-down"></i></th>
+                    <th>Status <i class="ph ph-caret-up-down"></i></th>
+                    <th style="text-align: right;">Valor <i class="ph ph-caret-up-down"></i></th>
+                    <th style="text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="8" style="text-align:center">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- TABELA CONCILIAÇÃO -->
+    <div id="card-conciliacao" style="display: none; overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h4 style="margin:0; ">Importar Extrato OFX</h4>
+            <div>
+                <input type="file" id="fin-ofx-file" accept=".ofx" style="display:none;" onchange="Modulo_financeiro.importarOFX(this.files[0])">
+                <button class="action-button" onclick="document.getElementById('fin-ofx-file').click()" >
+                    <i class="ph ph-upload-simple"></i> Selecionar Arquivo .OFX
+                </button>
+            </div>
+        </div>
+        <div style="background: rgba(0, 82, 204, 0.1); border-left: 4px solid #0052cc; padding: 12px; border-radius: 4px;  font-size: 13px; margin-bottom: 24px;">
+            Selecione um arquivo OFX do seu banco. O sistema tentará sugerir lançamentos baseados no extrato.
+        </div>
+        <table class="olist-table" id="table-ofx">
+            <thead>
+                <tr>
+                    <th style="width: 100px;">Data</th>
+                    <th>Descrição do Banco</th>
+                    <th>Tipo</th>
+                    <th style="text-align: right;">Valor</th>
+                    <th style="width: 120px; text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-ofx">
+                <tr><td colspan="5" style="text-align:center">Nenhum arquivo importado.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODAL: NOVA CONTA -->
+    <div id="modal-nova-conta" class="modal">
+        <div class="modal-content card" style="max-width: 500px;">
+            <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0;">
+                <h3>Lançamento Manual</h3>
+            </div>
+            
+            <form id="form-nova-conta" onsubmit="event.preventDefault(); Modulo_financeiro.salvarNovaConta();">
+                <input type="hidden" id="fin-novo-id">
+                <div class="input-group">
+                    <label>Tipo de Movimentação</label>
+                    <select id="fin-novo-tipo" required>
+                        <option value="RECEBER">Conta a Receber (Entrada)</option>
+                        <option value="PAGAR">Conta a Pagar (Saída)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Descrição</label>
+                    <input type="text" id="fin-novo-descricao" placeholder="Ex: Conta de Luz, Venda Avulsa..." required>
+                </div>
+
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Categoria Financeira</label>
+                        <select id="fin-novo-categoria" class="form-select">
+                            <option value="">Nenhuma (Opcional)</option>
+                            <!-- Carregado via JS -->
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Conta Bancária / Caixa</label>
+                        <select id="fin-novo-conta-bancaria" class="form-select">
+                            <option value="">Nenhuma (Opcional)</option>
+                            <!-- Carregado via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="fin-novo-valor" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Vencimento Inicial</label>
+                        <input type="date" id="fin-novo-vencimento" required>
+                    </div>
+                </div>
+                
+                <!-- Recorrência -->
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Recorrência</label>
+                        <select id="fin-novo-recorrencia" class="form-select" onchange="document.getElementById('div-parcelas').style.display = this.value ? 'block' : 'none'">
+                            <option value="">Não (Lançamento Único)</option>
+                            <option value="MENSAL">Mensal</option>
+                            <option value="QUINZENAL">Quinzenal</option>
+                            <option value="SEMANAL">Semanal</option>
+                            <option value="ANUAL">Anual</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="div-parcelas" style="display: none;">
+                        <label>Quantidade de Parcelas</label>
+                        <input type="number" id="fin-novo-parcelas" min="2" max="120" value="2">
+                    </div>
+                </div>
+
+                <div class="input-group mt-3">
+                    <label>Marcadores (Tags)</label>
+                    <input type="text" id="fin-novo-tags" placeholder="Ex: urgente, marketing (separado por vírgula)">
+                    <small style="color: var(--text-secondary); margin-top: 4px; display: block;">Use vírgulas para separar as tags.</small>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 30px;">
+                    <button type="button" class="action-button" onclick="closeModal('modal-nova-conta')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: BAIXA DE CONTA (PAGAMENTO PARCIAL OU TOTAL) -->
+    <div id="modal-baixa-conta" class="modal">
+        <div class="modal-content card" style="max-width: 400px;">
+            <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0;">
+                <h3>Baixar Conta</h3>
+            </div>
+            <form id="form-baixa-conta" onsubmit="event.preventDefault(); Modulo_financeiro.confirmarBaixa();">
+                <input type="hidden" id="fin-baixa-id">
+                
+                <div class="alert alert-info" style="margin-bottom: 15px;">
+                    <strong>Conta:</strong> <span id="fin-baixa-descricao"></span><br>
+                    <strong>Valor Total:</strong> <span id="fin-baixa-total"></span>
+                </div>
+
+                <div class="input-group">
+                    <label>Valor Pago / Recebido (R$)</label>
+                    <input type="number" id="fin-baixa-valor" step="0.01" min="0.01" required>
+                    <small style="color: var(--text-secondary); margin-top: 4px; display: block;">Se o valor for menor que o total, uma nova conta pendente será gerada com o saldo restante (Baixa Parcial).</small>
+                </div>
+                
+                <div class="input-group">
+                    <label>Data de Pagamento</label>
+                    <input type="date" id="fin-baixa-data" required>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="button" class="action-button" onclick="closeModal('modal-baixa-conta')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar Baixa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: TRANSFERÊNCIA -->
+    <div id="modal-transferencia" class="modal">
+        <div class="modal-content card" style="max-width: 500px;">
+            <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0;">
+                <h3>Transferência entre Contas</h3>
+            </div>
+            
+            <form id="form-transferencia" onsubmit="event.preventDefault(); Modulo_financeiro.salvarTransferencia();">
+                <div class="input-group">
+                    <label>Conta de Origem (Sai dinheiro)</label>
+                    <select id="fin-transf-origem" class="form-select" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label>Conta de Destino (Entra dinheiro)</label>
+                    <select id="fin-transf-destino" class="form-select" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="fin-transf-valor" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Data da Transferência</label>
+                        <input type="date" id="fin-transf-data" required>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Descrição (Opcional)</label>
+                    <input type="text" id="fin-transf-descricao" placeholder="Ex: Transferência para caixinha">
+                </div>
+
+                <div class="modal-actions" style="margin-top: 30px;">
+                    <button type="button" class="action-button" onclick="closeModal('modal-transferencia')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Transferir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,76 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="cobrancas_bancarias"></script>
+<!-- VIEW: COBRANÇAS BANCÁRIAS -->
+<section id="view-cobrancas-bancarias" class="view-section">
+    <!-- BREADCRUMB / HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+            <div class="page-breadcrumb">
+                início = financeiro = <span>cobranças bancárias</span>
+            </div>
+            <h2 class="page-heading">Cobranças Bancárias</h2>
+            <p style="color: #888; margin-top: 8px;">Integração CNAB e Baixa Automática.</p>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Remessa CNAB -->
+        <div class="card" style="padding: 24px;">
+            <h4 style="margin: 0 0 8px 0;  display: flex; align-items: center;">
+                <i class="ph ph-upload-simple me-2" style="color: var(--primary)"></i> Gerar Remessa CNAB
+            </h4>
+            <p style="color: #888; font-size: 13px; margin-bottom: 24px;">
+                Gera um arquivo TXT padrão CNAB 400 contendo as contas a receber pendentes do banco selecionado para envio via internet banking.
+            </p>
+            
+            <div class="input-group">
+                <label>Selecione o Banco</label>
+                <select id="cnabBancoSelect">
+                    <option value="">Selecione o banco de origem...</option>
+                    <option value="INTER">Banco Inter (077)</option>
+                    <option value="ITAU">Banco Itaú (341)</option>
+                    <option value="BRADESCO">Bradesco (237)</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" style="width: 100%;  border-color: #0052cc;" onclick="CobrancasBancarias.gerarRemessa()">
+                Baixar Arquivo de Remessa
+            </button>
+            
+            <div id="cnabResult" style="display: none; margin-top: 24px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem;">Conteúdo Gerado (Simulação)</label>
+                <textarea id="cnabText" rows="6" readonly style="width: 100%; font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.2); border-color: #333;"></textarea>
+            </div>
+        </div>
+
+        <!-- Retorno CNAB / Webhook -->
+        <div class="card" style="padding: 24px;">
+            <h4 style="margin: 0 0 8px 0;  display: flex; align-items: center;">
+                <i class="ph ph-download-simple me-2" style="color: var(--success)"></i> Ler Retorno (Baixa Automática)
+            </h4>
+            <p style="color: #888; font-size: 13px; margin-bottom: 24px;">
+                Faça o upload do arquivo de retorno fornecido pelo seu banco para dar baixa automática em múltiplos boletos de uma vez.
+            </p>
+            
+            <div class="input-group">
+                <input type="file" id="arquivoRetorno" accept=".txt,.ret">
+            </div>
+            
+            <button class="btn btn-primary" style="width: 100%; background: var(--success); border-color: var(--success);" onclick="CobrancasBancarias.processarRetorno()">
+                Processar Arquivo
+            </button>
+            
+            <hr style="border-color: #333; margin: 32px 0;">
+            
+            <h5 style="margin: 0 0 16px 0;  display: flex; align-items: center;">
+                <i class="ph ph-lightning me-2" style="color: var(--warning)"></i> Status da Integração via Webhook
+            </h5>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
+                <span style=" font-size: 13px;">Gateway de Cartões (Pagar.me / Stone) Conectado</span>
+            </div>
+            <p style="color: #666; font-size: 11px; margin: 0;">
+                As baixas de pagamentos via cartão/pix ocorrem automaticamente através do endpoint <code>/webhook/pagamento</code> em tempo real.
+            </p>
+        </div>
+    </div>
+</section>

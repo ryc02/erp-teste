@@ -1,0 +1,173 @@
+<section id="view-propostas" class="view-section">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+            <div style="font-size: 12px; color: #888; margin-bottom: 8px;">
+                início = comercial <span >propostas</span>
+            </div>
+            <h2 style="margin: 0; font-size: 24px; font-weight: 600; ">Propostas Comerciais</h2>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="Modulo_propostas.abrirModalProposta()" style="border-radius: 8px; font-weight: 600;">
+                incluir proposta
+            </button>
+            <button class="action-button" onclick="Modulo_propostas.refresh()"  title="Atualizar">
+                <i class="ph ph-arrows-clockwise"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display: flex; gap: 32px; border-bottom: 1px solid #444; margin-bottom: 24px; padding-bottom: 0;">
+        <button class="olist-tab active tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('TODAS')">Todas</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('RASCUNHO')">Rascunhos</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('PENDENTE')">Pendentes</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('AGUARDANDO')">Aguardando</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('APROVADA')"><i style="color:var(--success)" class="ph ph-check-circle"></i> Aprovadas</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('NAO_APROVADA')"><i style="color:var(--danger)" class="ph ph-x-circle"></i> Não Aprovadas</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('CONCLUIDA')">Concluídas</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_propostas.filtrarStatus('MODELO')">Modelos</button>
+    </div>
+
+    <!-- TABELA -->
+    <div style="overflow-x: auto;">
+        <table class="olist-table" id="table-propostas">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">Ações</th>
+                    <th>Número</th>
+                    <th>Data</th>
+                    <th>Próx Contato</th>
+                    <th>Cliente</th>
+                    <th>Valor Total</th>
+                    <th>Marcadores</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-propostas">
+                <!-- Javascript content -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODAL: PROPOSTA COMERCIAL RICH VIEW -->
+    <div id="modal-proposta" class="modal" style="z-index: 9999;">
+        <div class="modal-content card" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0;">
+                <h3 id="proposta-modal-title">Nova Proposta Comercial</h3>
+                <span class="badge" id="proposta-status-badge">RASCUNHO</span>
+            </div>
+            
+            <form id="form-proposta" onsubmit="event.preventDefault(); Modulo_propostas.salvarProposta();">
+                <input type="hidden" id="prop-id">
+                
+                <div class="grid-3">
+                    <div class="input-group">
+                        <label>Natureza da operação</label>
+                        <select id="prop-natureza" class="form-select" required>
+                            <option value="VENDA SIMPLES">VENDA SIMPLES</option>
+                            <option value="SERVICO">SERVIÇO</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Cliente</label>
+                        <select id="prop-cliente" class="form-select" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Vendedor</label>
+                        <select id="prop-vendedor" class="form-select">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Abas internas da proposta -->
+                <div class="tabs" style="margin-top: 20px; border-bottom: 1px solid var(--border-color);">
+                    <button type="button" class="olist-tab active tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" style="padding-bottom: 5px;">Itens de produto ou serviço</button>
+                    <!-- <button type="button" class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" style="padding-bottom: 5px;">Descrições complementares</button> -->
+                </div>
+
+                <div class="table-responsive mt-3">
+                    <table class="olist-table" style="font-size: 0.9em;">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th style="width: 100px;">Qtde</th>
+                                <th style="width: 120px;">Preço Un.</th>
+                                <th style="width: 100px;">% Desc</th>
+                                <th style="width: 120px;">Preço Total</th>
+                                <th style="width: 50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-prop-itens">
+                            <!-- dinâmico -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="6">
+                                    <button type="button" class="btn btn-sm btn-outline" onclick="Modulo_propostas.adicionarItemRow()">+ Adicionar Item</button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="grid-2 mt-4">
+                    <!-- Valores Logísticos / Frete -->
+                    <div class="card p-3" style="background: var(--bg-color);">
+                        <h5>Frete e Totais</h5>
+                        <div class="grid-2 mt-2">
+                            <div class="input-group">
+                                <label>Valor Frete (R$)</label>
+                                <input type="number" id="prop-frete" step="0.01" min="0" value="0.00" onchange="Modulo_propostas.calcularTotais()">
+                            </div>
+                            <div class="input-group">
+                                <label>Desconto Extra (R$)</label>
+                                <input type="number" id="prop-desconto" step="0.01" min="0" value="0.00" onchange="Modulo_propostas.calcularTotais()">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <strong>Total Itens:</strong> R$ <span id="prop-total-itens">0,00</span><br>
+                            <strong>Total Proposta:</strong> <span style="font-size: 1.2em; font-weight: bold; color: var(--primary);">R$ <span id="prop-total-geral">0,00</span></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Condições Gerais -->
+                    <div class="card p-3" style="background: var(--bg-color);">
+                        <h5>Condições Gerais</h5>
+                        <div class="grid-2 mt-2">
+                            <div class="input-group">
+                                <label>Validade (dias)</label>
+                                <input type="number" id="prop-validade" value="7">
+                            </div>
+                            <div class="input-group">
+                                <label>Marcadores (Tags)</label>
+                                <input type="text" id="prop-tags" placeholder="Ex: Urgente">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Observações</label>
+                            <textarea id="prop-observacoes" rows="2" placeholder="Observações que sairão na impressão..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 30px;">
+                    <div id="prop-acoes-avancadas" style="display: none; gap: 10px; align-items: center;">
+                        <select id="prop-change-status" class="form-select" onchange="Modulo_propostas.alterarStatusProposta(this.value)" style="width: auto;">
+                            <option value="">Alterar Situação...</option>
+                            <option value="AGUARDANDO">Aguardando</option>
+                            <option value="APROVADA">Aprovada</option>
+                            <option value="NAO_APROVADA">Não Aprovada</option>
+                        </select>
+                        <button type="button" class="btn btn-success" id="btn-gerar-venda" onclick="Modulo_propostas.gerarVenda()">Gerar Pedido</button>
+                    </div>
+                    <div style="flex-grow: 1;"></div>
+                    <button type="button" class="action-button" onclick="closeModal('modal-proposta')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-salvar-prop">Salvar Proposta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>

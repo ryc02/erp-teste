@@ -1,0 +1,109 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="expedicao"></script>
+<!-- VIEW: EXPEDIÇÃO (PARTIAL) -->
+<section id="view-expedicao" class="view-section">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+            <div style="font-size: 12px; color: #888; margin-bottom: 8px;">
+                módulo <span >gestão</span>
+            </div>
+            <h2 style="margin: 0; font-size: 24px; font-weight: 600; ">Expedição e Logística</h2>
+        </div>
+        <div class="flex-gap">
+            <button class="action-button" onclick="Modulo_expedicao.refresh()">
+                <i class="ph ph-arrows-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- PAINEL DE AÇÕES EM MASSA -->
+    <div class="card" style="margin-bottom: 24px; background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2);">
+        <div style="padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <input type="checkbox" id="expedicao-select-all" onchange="Modulo_expedicao.toggleSelectAll(this)" style="width: 20px; height: 20px;">
+                <span style="font-weight: 600; font-size: 1.1rem;">Selecionar Todos (<span id="expedicao-selected-count">0</span> selecionados)</span>
+            </div>
+            
+            <div class="flex-gap">
+                <button class="action-button" id="btn-picking" onclick="Modulo_expedicao.gerarPickingList()" disabled>
+                    <i class="ph ph-list-checks"></i> Gerar Picking List
+                </button>
+                <button class="action-button" id="btn-etiquetas" onclick="Modulo_expedicao.imprimirEtiquetas()" disabled>
+                    <i class="ph ph-printer"></i> Imprimir Etiquetas
+                </button>
+                <button class="btn btn-primary" id="btn-enviar" onclick="Modulo_expedicao.abrirModalEnvio()" disabled>
+                    <i class="ph ph-truck"></i> Marcar como Enviado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA DE PEDIDOS PENDENTES -->
+    <div class="card">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.1rem;">Pedidos Aguardando Envio</h3>
+            <span class="badge" style="background: var(--info);">STATUS: FATURADO / APROVADO</span>
+        </div>
+        <div class="table-responsive">
+            <table class="olist-table" id="table-expedicao-pendentes">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;"></th>
+                        <th>Nº Pedido</th>
+                        <th>Data</th>
+                        <th>Cliente</th>
+                        <th>Status Atual</th>
+                        <th>Itens</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="7" style="text-align:center">Carregando pedidos pendentes...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL: MARCAR COMO ENVIADO -->
+    <div id="modal-expedicao-enviar" class="modal">
+        <div class="modal-content card" style="max-width: 500px;">
+            <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0;">
+                <h3>Confirmar Envio</h3>
+            </div>
+            
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                Você está prestes a marcar <strong id="expedicao-enviar-qtd">0</strong> pedido(s) como <strong>ENVIADO</strong>.
+            </p>
+            
+            <div class="input-group">
+                <label>Código de Rastreio (Opcional - Único ou Lote)</label>
+                <input type="text" id="expedicao-rastreio" placeholder="Ex: BR123456789BR">
+            </div>
+            
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button type="button" class="action-button" onclick="closeModal('modal-expedicao-enviar')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="Modulo_expedicao.confirmarEnvio()">
+                    <i class="ph ph-check-circle"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PICKING LIST (PRINT VIEW) -->
+    <div id="modal-expedicao-picking" class="modal">
+        <div class="modal-content card" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0; justify-content: space-between;">
+                <h3>Picking List Consolidada</h3>
+                <div class="flex-gap">
+                    <button type="button" class="action-button" onclick="closeModal('modal-expedicao-picking')">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="window.printDocumentViaAgent(window.location.href, {preferBrowserPrint: true})">
+                        <i class="ph ph-printer"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+            
+            <div id="picking-list-content" style="background: white; color: black; padding: 20px; border-radius: 8px;">
+                <!-- Conteúdo do picking list será gerado aqui -->
+            </div>
+        </div>
+    </div>
+</section>

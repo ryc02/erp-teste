@@ -1,0 +1,39 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="auditoria"></script>
+<!-- VIEW: AUDITORIA (PARTIAL) -->
+<section id="view-auditoria" class="view-section active">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h2 style="font-size: 1.5rem; color: white; font-weight: 800;">Logs de Auditoria</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Rastreamento completo de ações críticas no sistema.</p>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div style="position: relative; width: 300px;">
+                    <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                    <input type="text" id="audit-filter" placeholder="Filtrar logs..." oninput="Modulo_auditoria.applyFilter()" style="padding-left: 35px; background: rgba(255,255,255,0.05); border-radius: 20px; border: 1px solid var(--border); color: white; width: 100%;">
+                </div>
+                <button class="btn btn-primary" onclick="Modulo_auditoria.loadAuditLogs()">
+                    <i class="ph ph-arrows-clockwise"></i> Atualizar
+                </button>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="olist-table" id="table-audit">
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Usuário</th>
+                        <th>Módulo</th>
+                        <th>Ação</th>
+                        <th>Detalhes</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6" style="text-align:center">Carregando logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,104 @@
+<div class="module-header">
+    <div class="module-title">
+        <i class="ph ph-chart-line-up"></i>
+        <h1>Resultados Comerciais</h1>
+    </div>
+</div>
+
+<div class="tabs" style="margin-bottom: 20px;">
+    <button class="olist-tab active tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" data-tab="tab-performance">Performance de Vendas</button>
+    <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" data-tab="tab-curva-abc">Curva ABC de Produtos</button>
+    <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" data-tab="tab-comissoes">Comissões</button>
+</div>
+
+<!-- Aba: Performance -->
+<div id="tab-performance" class="tab-content active">
+    <div class="dashboard-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="ph ph-currency-dollar"></i></div>
+            <div class="stat-info">
+                <h3>Total Faturado (30d)</h3>
+                <p class="stat-value" id="perf-total-faturado">R$ 0,00</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="ph ph-receipt"></i></div>
+            <div class="stat-info">
+                <h3>Pedidos</h3>
+                <p class="stat-value" id="perf-qtd-pedidos">0</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="ph ph-chart-bar"></i></div>
+            <div class="stat-info">
+                <h3>Ticket Médio</h3>
+                <p class="stat-value" id="perf-ticket-medio">R$ 0,00</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+        <h3>Top 5 Vendedores (30d)</h3>
+        <table class="olist-table" style="margin-top: 15px;">
+            <thead>
+                <tr>
+                    <th>Vendedor</th>
+                    <th>Qtd Pedidos</th>
+                    <th>Total Vendido</th>
+                </tr>
+            </thead>
+            <tbody id="perf-vendedores-body">
+                <tr><td colspan="3" style="text-align:center;">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Aba: Curva ABC -->
+<div id="tab-curva-abc" class="tab-content" style="display: none;">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3>Curva ABC (Princípio de Pareto)</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                <strong>A:</strong> Até 80% do faturamento | <strong>B:</strong> 80% a 95% | <strong>C:</strong> Restante
+            </p>
+        </div>
+        
+        <table class="olist-table">
+            <thead>
+                <tr>
+                    <th>Classificação</th>
+                    <th>Produto / SKU</th>
+                    <th>Qtd Vendida</th>
+                    <th>Valor Total</th>
+                    <th>% Acumulado</th>
+                </tr>
+            </thead>
+            <tbody id="abc-table-body">
+                <tr><td colspan="5" style="text-align:center;">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Aba: Comissões -->
+<div id="tab-comissoes" class="tab-content" style="display: none;">
+    <div class="card">
+        <h3>Comissões por Representante</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 15px;">Cálculo baseado em todos os pedidos faturados/entregues para o representante.</p>
+        
+        <table class="olist-table">
+            <thead>
+                <tr>
+                    <th>Representante</th>
+                    <th>% Comissão Padrão</th>
+                    <th>Total Vendas</th>
+                    <th>Valor Comissão</th>
+                </tr>
+            </thead>
+            <tbody id="comissoes-table-body">
+                <tr><td colspan="4" style="text-align:center;">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,1004 @@
+<script
+    src="../../core/module-shell-redirect.js"
+    data-module-id="dashboard">
+</script>
+
+<style>
+    #view-dashboard {
+        --dash-surface: var(--bg-surface, #161920);
+        --dash-surface-soft: var(--bg-surface-secondary, #1b1f28);
+        --dash-border: var(--border-color, #292e39);
+        --dash-text: var(--text-primary, #f4f6f8);
+        --dash-muted: var(--text-secondary, #9ca3af);
+        --dash-radius: 14px;
+        --dash-gap: 20px;
+    }
+
+    #view-dashboard * {
+        box-sizing: border-box;
+    }
+
+    /* Cabeçalho */
+
+    #view-dashboard .dash-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    #view-dashboard .dash-title {
+        margin: 0;
+        color: var(--dash-text);
+        font-size: 1.55rem;
+        font-weight: 750;
+        line-height: 1.2;
+    }
+
+    #view-dashboard .dash-subtitle {
+        margin: 7px 0 0;
+        color: var(--dash-muted);
+        font-size: 0.9rem;
+    }
+
+    #view-dashboard .dash-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #view-dashboard .dash-period-select {
+        min-width: 160px;
+        height: 42px;
+        padding: 0 38px 0 14px;
+        color: var(--dash-text);
+        background: var(--dash-surface);
+        border: 1px solid var(--dash-border);
+        border-radius: 10px;
+        outline: none;
+        cursor: pointer;
+    }
+
+    /* Indicadores principais */
+
+    #view-dashboard .dash-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--dash-gap);
+        margin-bottom: 20px;
+    }
+
+    #view-dashboard .dash-kpi {
+        position: relative;
+        min-height: 132px;
+        padding: 20px;
+        overflow: hidden;
+        background: var(--dash-surface);
+        border: 1px solid var(--dash-border);
+        border-radius: var(--dash-radius);
+    }
+
+    #view-dashboard .dash-kpi::before {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 3px;
+        content: "";
+        background: var(--kpi-color);
+    }
+
+    #view-dashboard .dash-kpi-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    #view-dashboard .dash-kpi-icon {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        flex-shrink: 0;
+        color: var(--kpi-color);
+        font-size: 1.35rem;
+        background: var(--kpi-bg);
+        border-radius: 11px;
+    }
+
+    #view-dashboard .dash-kpi-label {
+        color: var(--dash-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    #view-dashboard .dash-kpi-value {
+        margin-top: 9px;
+        color: var(--dash-text);
+        font-size: 2rem;
+        font-weight: 750;
+        letter-spacing: -0.04em;
+    }
+
+    #view-dashboard .dash-kpi-description {
+        margin-top: 8px;
+        color: var(--dash-muted);
+        font-size: 0.78rem;
+    }
+
+    #view-dashboard .dash-kpi--sales {
+        --kpi-color: var(--primary, #3b82f6);
+        --kpi-bg: rgba(59, 130, 246, 0.12);
+    }
+
+    #view-dashboard .dash-kpi--production {
+        --kpi-color: var(--success, #10b981);
+        --kpi-bg: rgba(16, 185, 129, 0.12);
+    }
+
+    #view-dashboard .dash-kpi--pending {
+        --kpi-color: var(--warning, #f59e0b);
+        --kpi-bg: rgba(245, 158, 11, 0.12);
+    }
+
+    #view-dashboard .dash-kpi--efficiency {
+        --kpi-color: var(--purple, #8b5cf6);
+        --kpi-bg: rgba(139, 92, 246, 0.12);
+    }
+
+    /* Progresso de produção */
+
+    #view-dashboard .dash-progress-card {
+        padding: 20px 22px;
+        margin-bottom: 24px;
+        background: var(--dash-surface);
+        border: 1px solid var(--dash-border);
+        border-radius: var(--dash-radius);
+    }
+
+    #view-dashboard .dash-progress-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 14px;
+    }
+
+    #view-dashboard .dash-progress-title {
+        margin: 0;
+        color: var(--dash-text);
+        font-size: 0.95rem;
+        font-weight: 700;
+    }
+
+    #view-dashboard .dash-progress-description {
+        margin: 5px 0 0;
+        color: var(--dash-muted);
+        font-size: 0.78rem;
+    }
+
+    #view-dashboard .dash-progress-percent {
+        color: var(--dash-text);
+        font-size: 0.95rem;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    #view-dashboard .dash-progress-track {
+        display: flex;
+        width: 100%;
+        height: 14px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 999px;
+    }
+
+    #view-dashboard .dash-progress-produced,
+    #view-dashboard .dash-progress-pending {
+        width: 0;
+        height: 100%;
+        transition: width 350ms ease;
+    }
+
+    #view-dashboard .dash-progress-produced {
+        background: var(--success, #10b981);
+        transition: width 600ms cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    #view-dashboard .dash-progress-pending {
+        background: var(--warning, #f59e0b);
+        transition: width 600ms cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    #view-dashboard .dash-progress-empty-hint {
+        margin-top: 10px;
+        color: var(--dash-muted);
+        font-size: 0.76rem;
+        font-style: italic;
+    }
+
+    #view-dashboard .dash-progress-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-top: 13px;
+        color: var(--dash-muted);
+        font-size: 0.78rem;
+    }
+
+    #view-dashboard .dash-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    #view-dashboard .dash-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    /* Indicadores secundários */
+
+    #view-dashboard .dash-operation-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--dash-gap);
+        margin-bottom: 28px;
+    }
+
+    #view-dashboard .dash-operation-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+        min-height: 112px;
+        padding: 18px;
+        background: var(--dash-surface);
+        border: 1px solid var(--dash-border);
+        border-radius: var(--dash-radius);
+    }
+
+    #view-dashboard .dash-operation-main {
+        min-width: 0;
+    }
+
+    #view-dashboard .dash-operation-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--dash-muted);
+        font-size: 0.82rem;
+        font-weight: 650;
+    }
+
+    #view-dashboard .dash-operation-heading i {
+        color: var(--metric-color);
+        font-size: 1.1rem;
+    }
+
+    #view-dashboard .dash-operation-value {
+        margin-top: 9px;
+        color: var(--dash-text);
+        font-size: 1.65rem;
+        font-weight: 750;
+    }
+
+    #view-dashboard .dash-operation-note {
+        margin-top: 5px;
+        color: var(--dash-muted);
+        font-size: 0.72rem;
+    }
+
+    #view-dashboard .sparkline-container {
+        position: relative;
+        width: 105px;
+        height: 48px;
+        overflow: hidden;
+        flex-shrink: 0;
+        border-radius: 6px;
+    }
+
+    #view-dashboard .sparkline-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Gráficos */
+
+    #view-dashboard .dash-charts-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr);
+        gap: var(--dash-gap);
+        margin-bottom: var(--dash-gap);
+    }
+
+    #view-dashboard .dash-chart-card,
+    #view-dashboard .dash-table-card {
+        background: var(--dash-surface);
+        border: 1px solid var(--dash-border);
+        border-radius: var(--dash-radius);
+    }
+
+    #view-dashboard .dash-chart-card {
+        min-width: 0;
+        padding: 20px;
+    }
+
+    #view-dashboard .dash-chart-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    #view-dashboard .dash-chart-title {
+        margin: 0;
+        color: var(--dash-text);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    #view-dashboard .dash-chart-subtitle {
+        margin: 5px 0 0;
+        color: var(--dash-muted);
+        font-size: 0.76rem;
+    }
+
+    #view-dashboard .dash-chart-canvas {
+        position: relative;
+        width: 100%;
+        height: 270px;
+    }
+
+    #view-dashboard .dash-chart-canvas--flow {
+        height: 245px;
+    }
+
+    #view-dashboard .dash-chart-canvas canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    #view-dashboard .dash-top-clients {
+        display: flex;
+        min-height: 120px;
+        max-height: 320px;
+        padding-right: 5px;
+        overflow-y: auto;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    #view-dashboard .dash-client-row {
+        display: grid;
+        grid-template-columns: minmax(100px, 180px) minmax(120px, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #view-dashboard .dash-client-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        color: var(--dash-text);
+        font-size: 0.82rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #view-dashboard .dash-client-rank {
+        flex-shrink: 0;
+        min-width: 22px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--dash-muted);
+        letter-spacing: 0;
+    }
+
+    #view-dashboard .dash-client-track {
+        height: 10px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 999px;
+    }
+
+    #view-dashboard .dash-client-bar {
+        height: 100%;
+        background: var(--success, #10b981);
+        border-radius: inherit;
+        transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    #view-dashboard .dash-client-value {
+        min-width: 42px;
+        color: var(--dash-muted);
+        font-size: 0.78rem;
+        text-align: right;
+    }
+
+    #view-dashboard .dash-flow-row {
+        margin-bottom: var(--dash-gap);
+    }
+
+    /* Tabela */
+
+    #view-dashboard .dash-table-card {
+        padding: 20px;
+    }
+
+    #view-dashboard .dash-table-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+    }
+
+    #view-dashboard .dash-table-title {
+        margin: 0;
+        color: var(--dash-text);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    #view-dashboard .dash-table-filters {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #view-dashboard .dash-filter-input,
+    #view-dashboard .dash-filter-select {
+        height: 40px;
+        padding: 0 12px;
+        color: var(--dash-text);
+        background: var(--dash-surface-soft);
+        border: 1px solid var(--dash-border);
+        border-radius: 9px;
+        outline: none;
+    }
+
+    #view-dashboard .dash-filter-input {
+        width: min(270px, 35vw);
+    }
+
+    #view-dashboard .dash-filter-select {
+        width: 150px;
+    }
+
+    #view-dashboard .dash-filter-input:focus,
+    #view-dashboard .dash-filter-select:focus,
+    #view-dashboard .dash-period-select:focus {
+        border-color: var(--primary, #3b82f6);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    #view-dashboard .dash-table-scroll {
+        overflow-x: auto;
+    }
+
+    #view-dashboard .dash-empty-cell {
+        height: 120px;
+        color: var(--dash-muted);
+        text-align: center;
+    }
+
+    #view-dashboard .dash-empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    #view-dashboard .dash-empty-state i {
+        color: var(--dash-muted);
+        font-size: 1.7rem;
+    }
+
+    #view-dashboard .dash-empty-state strong {
+        color: var(--dash-text);
+        font-size: 0.9rem;
+    }
+
+    /* Responsividade */
+
+    @media (max-width: 1200px) {
+        #view-dashboard .dash-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #view-dashboard .dash-operation-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 900px) {
+        #view-dashboard .dash-charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        #view-dashboard .dash-top-clients {
+            min-height: 220px;
+            max-height: none;
+        }
+
+        #view-dashboard .dash-table-header {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        #view-dashboard .dash-table-filters {
+            width: 100%;
+        }
+
+        #view-dashboard .dash-filter-input {
+            width: 100%;
+            flex: 1;
+        }
+    }
+
+    @media (max-width: 650px) {
+        #view-dashboard .dash-header {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        #view-dashboard .dash-header-actions {
+            width: 100%;
+        }
+
+        #view-dashboard .dash-period-select {
+            flex: 1;
+        }
+
+        #view-dashboard .dash-kpi-grid,
+        #view-dashboard .dash-operation-grid {
+            grid-template-columns: 1fr;
+        }
+
+        #view-dashboard .dash-progress-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        #view-dashboard .dash-table-filters {
+            flex-direction: column;
+        }
+
+        #view-dashboard .dash-filter-input,
+        #view-dashboard .dash-filter-select {
+            width: 100%;
+        }
+
+        #view-dashboard .dash-client-row {
+            grid-template-columns: minmax(90px, 130px) 1fr auto;
+        }
+    }
+</style>
+
+<section id="view-dashboard" class="view-section">
+
+    <header class="dash-header">
+        <div>
+            <h2 class="dash-title">Panorama Operacional</h2>
+            <p class="dash-subtitle">
+                Acompanhe vendas, produção, estoque e movimentações em um único lugar.
+            </p>
+        </div>
+
+        <div class="dash-header-actions">
+            <label for="dashboard-period" class="sr-only">Período</label>
+
+            <select id="dashboard-period" class="dash-period-select">
+                <option value="today">Hoje</option>
+                <option value="7days">Últimos 7 dias</option>
+                <option value="30days">Últimos 30 dias</option>
+                <option value="month">Este mês</option>
+            </select>
+
+            <button
+                type="button"
+                class="btn btn-outline"
+                onclick="Modulo_dashboard.refresh()">
+
+                <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>
+                Atualizar
+            </button>
+        </div>
+    </header>
+
+    <section class="dash-kpi-grid" aria-label="Indicadores principais">
+
+        <article class="dash-kpi dash-kpi--sales">
+            <div class="dash-kpi-top">
+                <div>
+                    <div class="dash-kpi-label">Vendas</div>
+                    <div
+                        class="dash-kpi-value"
+                        id="kpi-vendas"
+                        aria-live="polite">
+                        0
+                    </div>
+                </div>
+
+                <div class="dash-kpi-icon">
+                    <i class="ph ph-shopping-cart" aria-hidden="true"></i>
+                </div>
+            </div>
+
+            <div class="dash-kpi-description">
+                Pedidos recebidos no período
+            </div>
+        </article>
+
+        <article class="dash-kpi dash-kpi--production">
+            <div class="dash-kpi-top">
+                <div>
+                    <div class="dash-kpi-label">Produzidos</div>
+                    <div
+                        class="dash-kpi-value"
+                        id="kpi-produzidos"
+                        aria-live="polite">
+                        0
+                    </div>
+                </div>
+
+                <div class="dash-kpi-icon">
+                    <i class="ph ph-factory" aria-hidden="true"></i>
+                </div>
+            </div>
+
+            <div class="dash-kpi-description">
+                Pedidos concluídos pela produção
+            </div>
+        </article>
+
+        <article class="dash-kpi dash-kpi--pending">
+            <div class="dash-kpi-top">
+                <div>
+                    <div class="dash-kpi-label">Pendentes</div>
+                    <div
+                        class="dash-kpi-value"
+                        id="kpi-pendentes"
+                        aria-live="polite">
+                        0
+                    </div>
+                </div>
+
+                <div class="dash-kpi-icon">
+                    <i class="ph ph-clock-countdown" aria-hidden="true"></i>
+                </div>
+            </div>
+
+            <div class="dash-kpi-description">
+                Pedidos aguardando conclusão
+            </div>
+        </article>
+
+        <article class="dash-kpi dash-kpi--efficiency">
+            <div class="dash-kpi-top">
+                <div>
+                    <div class="dash-kpi-label">Eficiência</div>
+                    <div
+                        class="dash-kpi-value"
+                        id="kpi-eficiencia"
+                        aria-live="polite">
+                        0%
+                    </div>
+                </div>
+
+                <div class="dash-kpi-icon">
+                    <i class="ph ph-gauge" aria-hidden="true"></i>
+                </div>
+            </div>
+
+            <div class="dash-kpi-description">
+                Relação entre produzidos e vendidos
+            </div>
+        </article>
+
+    </section>
+
+    <section class="dash-progress-card" aria-labelledby="production-progress-title">
+
+        <div class="dash-progress-header">
+            <div>
+                <h3 class="dash-progress-title" id="production-progress-title">
+                    Progresso da produção
+                </h3>
+
+                <p class="dash-progress-description">
+                    Percentual dos pedidos vendidos que já foram produzidos.
+                </p>
+            </div>
+
+            <span
+                id="progress-percent-label"
+                class="dash-progress-percent"
+                aria-live="polite">
+                0% concluído
+            </span>
+        </div>
+
+        <div
+            class="dash-progress-track"
+            role="progressbar"
+            aria-label="Progresso da produção"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+            id="production-progress-track">
+
+            <div
+                id="progress-produzidos"
+                class="dash-progress-produced"
+                title="Produzidos">
+            </div>
+
+            <div
+                id="progress-pendentes"
+                class="dash-progress-pending"
+                title="Pendentes">
+            </div>
+        </div>
+
+        <div class="dash-progress-legend">
+            <span class="dash-legend-item">
+                <span
+                    class="dash-legend-dot"
+                    style="background: var(--success, #10b981)">
+                </span>
+                Produzidos
+            </span>
+
+            <span class="dash-legend-item">
+                <span
+                    class="dash-legend-dot"
+                    style="background: var(--warning, #f59e0b)">
+                </span>
+                Pendentes
+            </span>
+
+            <span class="dash-legend-item">
+                Total vendido:
+                <strong id="progress-total-vendas">0</strong>
+            </span>
+        </div>
+
+        <p id="progress-empty-hint" class="dash-progress-empty-hint" style="display:none">
+            Nenhum pedido de venda registrado ainda. A barra será preenchida conforme as vendas forem criadas.
+        </p>
+
+    </section>
+
+    <section class="dash-operation-grid" aria-label="Indicadores operacionais">
+
+        <article class="dash-operation-card" style="--metric-color: var(--primary)">
+            <div class="dash-operation-main">
+                <div class="dash-operation-heading">
+                    <i class="ph ph-package"></i>
+                    Produtos
+                </div>
+
+                <div class="dash-operation-value" id="stat-total-produtos">...</div>
+                <div class="dash-operation-note">Produtos cadastrados</div>
+            </div>
+
+            <div class="sparkline-container">
+                <canvas id="spark-produtos"></canvas>
+            </div>
+        </article>
+
+        <article class="dash-operation-card" style="--metric-color: var(--danger)">
+            <div class="dash-operation-main">
+                <div class="dash-operation-heading">
+                    <i class="ph ph-warning"></i>
+                    Alertas
+                </div>
+
+                <div class="dash-operation-value" id="stat-alertas">...</div>
+                <div class="dash-operation-note">Itens que exigem atenção</div>
+            </div>
+
+            <div class="sparkline-container">
+                <canvas id="spark-alertas"></canvas>
+            </div>
+        </article>
+
+        <article class="dash-operation-card" style="--metric-color: var(--success)">
+            <div class="dash-operation-main">
+                <div class="dash-operation-heading">
+                    <i class="ph ph-arrows-left-right"></i>
+                    Movimentos
+                </div>
+
+                <div class="dash-operation-value" id="stat-mov-hoje">...</div>
+                <div class="dash-operation-note">Movimentações no período</div>
+            </div>
+
+            <div class="sparkline-container">
+                <canvas id="spark-mov"></canvas>
+            </div>
+        </article>
+
+        <article class="dash-operation-card" style="--metric-color: var(--info)">
+            <div class="dash-operation-main">
+                <div class="dash-operation-heading">
+                    <i class="ph ph-lock-key"></i>
+                    Reservas
+                </div>
+
+                <div class="dash-operation-value" id="stat-reservas">...</div>
+                <div class="dash-operation-note">Itens reservados</div>
+            </div>
+
+            <div class="sparkline-container">
+                <canvas id="spark-reservas"></canvas>
+            </div>
+        </article>
+
+        <article class="dash-operation-card" style="--metric-color: var(--warning)">
+            <div class="dash-operation-main">
+                <div class="dash-operation-heading">
+                    <i class="ph ph-gear-six"></i>
+                    Máquinas
+                </div>
+
+                <div class="dash-operation-value" id="stat-maquinas-dash">...</div>
+                <div class="dash-operation-note">Máquinas cadastradas</div>
+            </div>
+
+            <div class="sparkline-container">
+                <canvas id="spark-maquinas"></canvas>
+            </div>
+        </article>
+
+        <article class="dash-operation-card" style="--metric-color: var(--purple)">
+            <div class="dash-operation-main">
+                <div class="dash-operation-heading">
+                    <i class="ph ph-wrench"></i>
+                    O.S. abertas
+                </div>
+
+                <div class="dash-operation-value" id="stat-os-dash">...</div>
+                <div class="dash-operation-note">Ordens aguardando conclusão</div>
+            </div>
+
+            <div class="sparkline-container">
+                <canvas id="spark-os"></canvas>
+            </div>
+        </article>
+
+    </section>
+
+    <section class="dash-charts-grid">
+
+        <article class="dash-chart-card">
+            <div class="dash-chart-header">
+                <div>
+                    <h3 class="dash-chart-title">
+                        Status da Produção
+                    </h3>
+
+                    <p class="dash-chart-subtitle">
+                        Distribuição das ordens por status.
+                    </p>
+                </div>
+            </div>
+
+            <div class="dash-chart-canvas">
+                <canvas id="chart-status-prod"></canvas>
+            </div>
+        </article>
+
+        <article class="dash-chart-card">
+            <div class="dash-chart-header">
+                <div>
+                    <h3 class="dash-chart-title">Top clientes</h3>
+
+                    <p class="dash-chart-subtitle">
+                        Clientes com maior volume de pedidos.
+                    </p>
+                </div>
+            </div>
+
+            <div
+                id="top-clientes-container"
+                class="dash-top-clients">
+
+                <div class="dash-empty-state">
+                    <i class="ph ph-spinner-gap"></i>
+                    <strong>Carregando clientes</strong>
+                </div>
+            </div>
+        </article>
+
+    </section>
+
+    <section class="dash-flow-row">
+        <article class="dash-chart-card">
+            <div class="dash-chart-header">
+                <div>
+                    <h3 class="dash-chart-title">Fluxo de estoque</h3>
+
+                    <p class="dash-chart-subtitle">
+                        Entradas, saídas e ajustes realizados no período.
+                    </p>
+                </div>
+            </div>
+
+            <div class="dash-chart-canvas dash-chart-canvas--flow">
+                <canvas id="chart-fluxo"></canvas>
+            </div>
+        </article>
+    </section>
+
+    <section class="dash-table-card">
+
+        <div class="dash-table-header">
+            <div>
+                <h3 class="dash-table-title">Últimas movimentações</h3>
+                <p class="dash-chart-subtitle">
+                    Histórico recente de entradas, saídas e ajustes.
+                </p>
+            </div>
+
+            <div class="dash-table-filters">
+                <input
+                    type="search"
+                    id="filter-mov-query"
+                    class="dash-filter-input"
+                    placeholder="Buscar produto ou usuário..."
+                    autocomplete="off"
+                    aria-label="Buscar movimentação">
+
+                <select
+                    id="filter-mov-tipo"
+                    class="dash-filter-select"
+                    aria-label="Filtrar por tipo">
+
+                    <option value="">Todos os tipos</option>
+                    <option value="ENTRADA">Entrada</option>
+                    <option value="SAIDA">Saída</option>
+                    <option value="AJUSTE">Ajuste</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="dash-table-scroll">
+            <table class="olist-table" id="table-recent-mov">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Ação</th>
+                        <th>Quantidade</th>
+                        <th>Data / Hora</th>
+                        <th>Usuário</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="dash-empty-cell">
+                            <div class="dash-empty-state">
+                                <i class="ph ph-spinner-gap"></i>
+                                <strong>Carregando movimentações</strong>
+                                <span>Aguarde enquanto os dados são consultados.</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </section>
+ 
+</section>

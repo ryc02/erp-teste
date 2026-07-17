@@ -1,0 +1,62 @@
+<div class="view-section">
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <h3><i class="ph ph-printer"></i> Configurações de Expedição</h3>
+        <p class="text-secondary" style="margin-bottom: 20px;">Parâmetros para impressão de etiquetas e Declaração de Conteúdo.</p>
+
+        <form id="form-config-expedicao" onsubmit="event.preventDefault(); Modulo_expedicao_configuracoes.salvarConfiguracoes();">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Formato da Etiqueta Padrão</label>
+                    <select id="config-formato-etiqueta" class="form-control" required>
+                        <option value="PDF_A4">Folha A4 (PDF comum)</option>
+                        <option value="ZPL_TERMICA">Térmica 100x150 (ZPL/PDF)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="config-imprimir-dce">
+                        Imprimir Declaração de Conteúdo (DC-e) junto com etiqueta
+                    </label>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Dados do Remetente (Padrão)</h4>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Nome / Razão Social</label>
+                <input type="text" id="config-remetente-nome" class="form-control" placeholder="Nome da Loja">
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>CPF / CNPJ</label>
+                    <input type="text" id="config-remetente-documento" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input type="text" id="config-remetente-cep" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Endereço Completo (Rua, Número, Bairro)</label>
+                <input type="text" id="config-remetente-endereco" class="form-control">
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Cidade</label>
+                    <input type="text" id="config-remetente-cidade" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Estado (UF)</label>
+                    <input type="text" id="config-remetente-estado" class="form-control" maxlength="2">
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary"><i class="ph ph-floppy-disk"></i> Salvar Configurações</button>
+            </div>
+        </form>
+    </div>
+</div>

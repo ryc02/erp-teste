@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Venner - Cadastros Comerciais</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+</head>
+<body>
+    <aside id="sidebar">
+        <div class="logo-area">
+            <div class="logo-container">
+                <svg class="logo-v-new" viewBox="0 0 120 100" style="width: 60px;">
+                    <path d="M5 20 L35 80 L48 80 L18 20 Z" fill="white" />
+                    <path d="M42 45 L50 80 L58 45 Z" fill="#3DA5D9" />
+                    <path d="M95 20 L52 80 L65 80 L105 20 Z" fill="white" />
+                </svg>
+                <div class="logo-text-wrapper" style="transform: skewX(-10deg); margin-left: -5px;">
+                    <div class="logo-main" style="letter-spacing: 2px;">ENNER</div>
+                    <div class="logo-sub" style="font-size: 0.4rem; text-align: center; margin-top: -2px;">CADASTROS<br>COMERCIAIS</div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="nav-menu" id="side-menu" aria-label="Módulos do comercial">
+            <div class="nav-item active">
+                <i class="ph ph-circle-notch animate-spin"></i> Carregando cadastros...
+            </div>
+        </nav>
+
+        <div style="padding: 20px; color: var(--text-secondary); font-size: 10px; border-top: 1px solid var(--border);">
+            v1.1 COMERCIAL ISOLADO
+        </div>
+    </aside>
+
+    <main>
+        <header id="topbar">
+            <div class="page-title" id="page-current-title">Cadastro de Clientes</div>
+            <div class="user-info">
+                <div id="db-status-container" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; font-weight: 600; margin-right: 16px;">
+                    <div id="db-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #666;"></div>
+                    <span id="db-status-text" style="color: var(--text-secondary);">Verificando BD...</span>
+                </div>
+                <div class="alert-badge">
+                    <i class="ph ph-bell" style="font-size: 24px;"></i>
+                    <span class="badge-count" id="alert-count">0</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; font-weight: 600;" id="user-name">Carregando...</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);" id="user-role">---</div>
+                    </div>
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-card); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); cursor: pointer;" onclick="logout()" title="Sair">
+                        <i class="ph ph-sign-out" style="font-size: 20px;"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="content">
+            <div class="card" style="padding: 100px; text-align: center;">
+                <i class="ph ph-circle-notch animate-spin" style="font-size: 48px; color: var(--accent);"></i>
+                <p>Carregando central comercial...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.APP_LOGIN_PATH = '/login.html?target=/comercial/index.html';
+        window.APP_DISABLE_REALTIME = true;
+    </script>
+    <script src="../core/api.js"></script>
+    <script src="../core/ui.js"></script>
+    <script src="core/modules.js"></script>
+    <script src="../app.js"></script>
+</body>
+</html>

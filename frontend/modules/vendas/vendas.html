@@ -1,0 +1,376 @@
+<script src="../../core/module-shell-redirect.js" data-module-id="vendas" data-shell="comercial"></script>
+<section id="view-vendas" class="view-section">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+            <div style="font-size: 12px; color: #888; margin-bottom: 8px;">
+                módulo <span >gestão</span>
+            </div>
+            <h2 style="margin: 0; font-size: 24px; font-weight: 600; ">Catálogo e Vendas</h2>
+        </div>
+        <div class="flex-gap">
+            <button class="btn btn-primary" onclick="Modulo_vendas.openNewOrderModal()">
+                <i class="ph ph-plus"></i> Novo Pedido
+            </button>
+            <button class="action-button" id="btn-vendas-refresh">
+                <i class="ph ph-arrows-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Itens no Catálogo</div>
+            <div class="stat-value" id="stat-vendas-total">...</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-label">Pedidos Hoje</div>
+            <div class="stat-value" id="stat-vendas-pedidos-hoje">0</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">Vendas (Mês)</div>
+            <div class="stat-value" id="stat-vendas-valor-mes">R$ 0,00</div>
+        </div>
+    </div>
+
+    <div class="tabs-container" style="margin-bottom: 24px;">
+        <button class="olist-tab active tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_vendas.switchTab('vendas-tab-crm')">Painel CRM</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_vendas.switchTab('vendas-tab-catalogo')">Catálogo Comercial</button>
+        <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" onclick="Modulo_vendas.switchTab('vendas-tab-pedidos')">Pedidos Realizados</button>
+    </div>
+
+    <div id="vendas-tab-crm" class="tab-content active">
+        <div class="card" style="margin-bottom: 24px; padding: 20px;">
+            <label style="font-weight: 600; margin-bottom: 8px; display: block;">Buscar e Selecionar Cliente</label>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <select id="crm-cliente-select" style="max-width: 600px;" onchange="Modulo_vendas.onCrmClientSelected()">
+                    <option value="">Selecione um cliente para carregar o histórico...</option>
+                </select>
+                <button class="action-button" onclick="Modulo_vendas.loadClientes(true)">
+                    <i class="ph ph-arrows-clockwise"></i> Recarregar Lista
+                </button>
+            </div>
+        </div>
+
+        <div id="crm-dashboard" style="display: none;">
+            <!-- Header do Cliente -->
+            <div class="card" style="margin-bottom: 24px; padding: 24px; background: linear-gradient(to right, rgba(var(--accent-rgb), 0.05), transparent);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+                    <div>
+                        <h2 id="crm-cliente-nome" style="margin: 0 0 8px 0; color: var(--accent);">Nome do Cliente</h2>
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.95rem;">
+                            <span title="Documento"><i class="ph ph-identification-card"></i> <span id="crm-cliente-documento">-</span></span>
+                            <span title="E-mail"><i class="ph ph-envelope"></i> <span id="crm-cliente-email">-</span></span>
+                            <span title="Telefone"><i class="ph ph-phone"></i> <span id="crm-cliente-telefone">-</span></span>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
+                        <span id="crm-cliente-situacao" class="badge">Ativo</span>
+                        <div class="flex-gap">
+                            <button class="btn btn-outline text-primary" onclick="Modulo_vendas.openNewOrderModal('COTACAO', true)">
+                                <i class="ph ph-file-text"></i> Nova Cotação
+                            </button>
+                            <button class="btn btn-primary" onclick="Modulo_vendas.openNewOrderModal('PEDIDO', true)">
+                                <i class="ph ph-shopping-bag"></i> Novo Pedido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabelas de Histórico -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="view-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                        <h3 style="font-size: 1.1rem; margin: 0;">Cotações em Aberto</h3>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="olist-table" id="table-crm-cotacoes">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data</th>
+                                    <th>Status</th>
+                                    <th>Total</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="5" style="text-align:center">Selecione um cliente.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="view-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                        <h3 style="font-size: 1.1rem; margin: 0;">Histórico de Pedidos</h3>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="olist-table" id="table-crm-pedidos">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data</th>
+                                    <th>Status</th>
+                                    <th>Total</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="5" style="text-align:center">Selecione um cliente.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="vendas-tab-catalogo" class="tab-content">
+        <div class="card">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: center;">
+                <input id="vendas-search" type="text" placeholder="Buscar no catálogo..." style="max-width: 400px;">
+            </div>
+            <div class="table-scroll">
+                <table class="olist-table" id="table-vendas-catalogo">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Produto</th>
+                            <th>Categoria</th>
+                            <th>Unidade</th>
+                            <th>Preço</th>
+                            <th>Estoque</th>
+                            <th>Localização</th>
+                            <th>Lead Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" style="text-align:center">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="vendas-tab-pedidos" class="tab-content">
+        <div class="card">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; gap: 16px;">
+                <input id="pedidos-search" type="text" placeholder="Buscar pedidos por cliente ou ID..." style="max-width: 400px;" oninput="Modulo_vendas.filterOrders()">
+                <select id="pedidos-status-filter" style="max-width: 200px;" onchange="Modulo_vendas.filterOrders()">
+                    <option value="">Todos os Status</option>
+                    <option value="RASCUNHO">Rascunho</option>
+                    <option value="APROVADO">Aprovado</option>
+                    <option value="FATURADO">Faturado</option>
+                    <option value="ENTREGUE">Entregue</option>
+                    <option value="CANCELADO">Cancelado</option>
+                </select>
+            </div>
+            <div class="table-scroll">
+                <table class="olist-table" id="table-vendas-pedidos">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>Data</th>
+                            <th>Status</th>
+                            <th>Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" style="text-align:center">Carregando pedidos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<!-- MODAL: NOVO PEDIDO -->
+<div id="modal-novo-pedido" class="modal">
+    <div class="modal-content card" style="max-width: 900px; padding: 0;">
+        <div style="padding: 24px; border-bottom: 1px solid var(--border);">
+            <h3 style="margin: 0;" id="modal-novo-pedido-title">Novo Documento Comercial</h3>
+        </div>
+        
+        <div class="tabs-container" style="padding: 0 24px; border-bottom: 1px solid var(--border); background: rgba(var(--bg-rgb), 0.5);">
+            <button class="olist-tab active tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" id="btn-order-tab-geral" onclick="Modulo_vendas.switchOrderTab('order-tab-geral')">1. Dados Gerais</button>
+            <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" id="btn-order-tab-itens" onclick="Modulo_vendas.switchOrderTab('order-tab-itens')">2. Itens</button>
+            <button class="olist-tab tab-btn" style="background:transparent; border-top:none; border-left:none; border-right:none;" id="btn-order-tab-totais" onclick="Modulo_vendas.switchOrderTab('order-tab-totais')">3. Transporte & Totais</button>
+        </div>
+
+        <div style="padding: 24px; min-height: 350px;">
+            <!-- Aba 1: Dados Gerais -->
+            <div id="order-tab-geral" class="tab-content active">
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Tipo de Documento</label>
+                        <select id="order-tipo">
+                            <option value="PEDIDO">Pedido de Venda</option>
+                            <option value="COTACAO">Cotação / Orçamento</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Selecionar Cliente</label>
+                        <select id="order-cliente-id" onchange="Modulo_vendas.onClientChange()" required>
+                            <option value="">Selecione um cliente...</option>
+                        </select>
+                        <input type="hidden" id="order-cliente-nome">
+                    </div>
+                    <div class="input-group">
+                        <label>Representante / Vendedor</label>
+                        <select id="order-representante-id">
+                            <option value="">Venda Direta / Nenhum</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Condição de Pagamento</label>
+                        <select id="order-condicao-id">
+                            <option value="">Selecione uma condição...</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="grid-column: span 2;">
+                        <label>Observações do Pedido</label>
+                        <input type="text" id="order-obs" placeholder="Opcional">
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button class="action-button" onclick="Modulo_vendas.switchOrderTab('order-tab-itens')">Avançar para Itens <i class="ph ph-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Aba 2: Itens -->
+            <div id="order-tab-itens" class="tab-content">
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Buscar Produto</label>
+                        <select id="order-item-sel" style="width: 100%;"></select>
+                    </div>
+                    <div style="width: 100px;">
+                        <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Qtd</label>
+                        <input type="number" id="order-item-qtd" value="1" step="any">
+                    </div>
+                    <button type="button" class="btn btn-accent" onclick="Modulo_vendas.addItemToOrder()">
+                        <i class="ph ph-plus"></i> Inserir
+                    </button>
+                </div>
+                <div class="table-scroll" style="max-height: 250px;">
+                    <table class="olist-table" id="table-order-items">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Qtd</th>
+                                <th>Preço Unit.</th>
+                                <th>Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                    <button class="action-button" onclick="Modulo_vendas.switchOrderTab('order-tab-geral')"><i class="ph ph-arrow-left"></i> Voltar</button>
+                    <div style="font-weight: 700; color: var(--accent);">Subtotal Itens: <span id="order-subtotal-value">R$ 0,00</span></div>
+                    <button class="action-button" onclick="Modulo_vendas.switchOrderTab('order-tab-totais')">Avançar para Frete <i class="ph ph-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Aba 3: Transporte & Totais -->
+            <div id="order-tab-totais" class="tab-content">
+                <div class="grid-2" style="margin-bottom: 24px;">
+                    <div class="input-group">
+                        <label>Valor do Frete (R$)</label>
+                        <input type="number" id="order-frete" value="0.00" step="0.01" oninput="Modulo_vendas.renderOrderItems()">
+                    </div>
+                    <div class="input-group">
+                        <label>Desconto Especial (R$)</label>
+                        <input type="number" id="order-desconto" value="0.00" step="0.01" oninput="Modulo_vendas.renderOrderItems()">
+                    </div>
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px; padding: 20px; background: rgba(var(--accent-rgb), 0.05); border-radius: 12px; border: 1px dashed var(--accent);">
+                    <div style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 8px;">
+                        Subtotal dos Itens: <span id="order-subtotal-value-2">R$ 0,00</span>
+                    </div>
+                    <div style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 8px;">
+                        Frete Total: <span id="order-frete-display" style="color: var(--info);">+ R$ 0,00</span>
+                    </div>
+                    <div style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 12px;">
+                        Desconto: <span id="order-desconto-display" style="color: var(--danger);">- R$ 0,00</span>
+                    </div>
+                    <div style="font-size: 1.8rem; font-weight: 800;">
+                        Total do Pedido: <span id="order-total-value" style="color: var(--accent);">R$ 0,00</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: left; margin-top: 20px;">
+                    <button class="action-button" onclick="Modulo_vendas.switchOrderTab('order-tab-itens')"><i class="ph ph-arrow-left"></i> Voltar para Itens</button>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="modal-actions" style="padding: 24px; border-top: 1px solid var(--border); background: var(--bg); border-radius: 0 0 12px 12px;">
+            <button type="button" class="action-button" onclick="closeModal('modal-novo-pedido')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="Modulo_vendas.submitOrder()">
+                <i class="ph ph-check"></i> Finalizar Documento
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DETALHE DO PEDIDO -->
+<div id="modal-pedido-detalhe" class="modal">
+    <div class="modal-content card" style="max-width: 800px;">
+        <div class="view-header" style="margin-bottom: 20px; border: none; padding: 0;">
+            <h3>Detalhes do Pedido <span id="detalhe-pedido-id" style="color: var(--accent);"></span></h3>
+            <div id="detalhe-pedido-status-badge"></div>
+        </div>
+        
+        <div class="grid-2" style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; margin-bottom: 20px;">
+            <div>
+                <label style="font-size: 11px; color: var(--text-secondary);">Cliente</label>
+                <div id="detalhe-pedido-cliente" style="font-weight: 700; font-size: 1.1rem;"></div>
+            </div>
+            <div>
+                <label style="font-size: 11px; color: var(--text-secondary);">Data do Pedido</label>
+                <div id="detalhe-pedido-data"></div>
+            </div>
+            <div style="grid-column: span 2;">
+                <label style="font-size: 11px; color: var(--text-secondary);">Observações</label>
+                <div id="detalhe-pedido-obs" style="font-style: italic; color: var(--text-secondary);"></div>
+            </div>
+        </div>
+
+        <div class="table-scroll" style="margin-bottom: 20px;">
+            <table class="olist-table" id="table-detalhe-itens">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Qtd</th>
+                        <th>Preço Unit.</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div style="text-align: right; margin-bottom: 30px; font-size: 1.5rem; font-weight: 800;">
+            Total: <span id="detalhe-pedido-total" style="color: var(--accent);"></span>
+        </div>
+
+        <div class="modal-actions" id="detalhe-pedido-actions" style="justify-content: space-between;">
+            <div class="flex-gap">
+                <button type="button" class="action-button" onclick="closeModal('modal-pedido-detalhe')">Fechar</button>
+                <button type="button" class="action-button" id="btn-imprimir-pedido" onclick="Modulo_vendas.imprimirPedido()">
+                    <i class="ph ph-printer"></i> Imprimir PDF
+                </button>
+            </div>
+            <div id="area-acao-aprovacao">
+                <!-- Botão de aprovação aparecerá aqui se status for RASCUNHO -->
+            </div>
+        </div>
+    </div>
+</div>
+</section>
