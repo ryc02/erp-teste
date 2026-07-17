@@ -33,7 +33,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !path.includes("/auth/login")) {
     clearToken();
     window.location.href = "/"; // force re-login
     throw new Error("Sessão expirada");
