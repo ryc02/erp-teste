@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, func, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -19,6 +19,7 @@ class PedidoVenda(Base):
     desconto_valor = Column(Float, default=0.0)
     valor_total = Column(Float, default=0.0) # Valor líquido (itens + frete - desconto)
     observacoes = Column(Text, nullable=True)
+    gerar_nota = Column(Boolean, default=True)
     codigo_rastreio = Column(String, nullable=True)
     url_rastreio = Column(String, nullable=True)
     codigo_rastreamento = Column(String, nullable=True)

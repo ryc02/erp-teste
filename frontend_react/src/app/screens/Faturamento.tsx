@@ -55,9 +55,10 @@ export function Faturamento() {
   };
 
   // Cálculos de Indicadores
-  const pedidosAFaturar = pedidos.filter(p => ["EM_ABERTO", "APROVADO", "PREPARANDO_ENVIO", "PRONTO_ENVIO"].includes(p.status));
+  const pedidosComNota = pedidos.filter(p => p.gerar_nota !== false);
+  const pedidosAFaturar = pedidosComNota.filter(p => ["EM_ABERTO", "APROVADO", "PREPARANDO_ENVIO", "PRONTO_ENVIO"].includes(p.status));
   const totalAFaturar = pedidosAFaturar.reduce((acc, p) => acc + (p.valor_total || 0), 0);
-  const pedidosFaturados = pedidos.filter(p => p.status === "FATURADO" || p.status === "ENVIADO" || p.status === "ENTREGUE");
+  const pedidosFaturados = pedidosComNota.filter(p => p.status === "FATURADO" || p.status === "ENVIADO" || p.status === "ENTREGUE");
   const totalFaturado = pedidosFaturados.reduce((acc, p) => acc + (p.valor_total || 0), 0);
   
   const ticketMedio = pedidosFaturados.length > 0 ? totalFaturado / pedidosFaturados.length : 0;

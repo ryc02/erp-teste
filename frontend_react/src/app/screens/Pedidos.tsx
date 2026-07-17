@@ -48,6 +48,7 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
   // Extras
   const [naturezaOperacao, setNaturezaOperacao] = useState("Venda");
   const [descontoGlobal, setDescontoGlobal] = useState(0);
+  const [gerarNota, setGerarNota] = useState(true);
   const [freteCliente, setFreteCliente] = useState(0);
   const [freteEmpresa, setFreteEmpresa] = useState(0);
   const [despesas, setDespesas] = useState(0);
@@ -199,6 +200,7 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
         if (data.natureza_operacao) {
           setNaturezaOperacao(data.natureza_operacao);
         }
+        setGerarNota(data.gerar_nota !== false);
         if (data.representante_id) {
           setRepresentanteId(String(data.representante_id));
         }
@@ -306,6 +308,7 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
         valor_frete: freteCliente,
         desconto_valor: descontoGlobal,
         observacoes: obsPublica + parcelasStr,
+        gerar_nota: gerarNota,
         natureza_operacao: naturezaOperacao,
         representante_id: representanteId ? parseInt(representanteId) : null,
         vendedor_id: representanteId ? parseInt(representanteId) : null,
@@ -587,6 +590,20 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
                   </optgroup>
                 </select>
               </Field>
+            </div>
+            
+            <div className="md:col-span-2 flex items-center pt-6">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={gerarNota}
+                  onChange={(e) => setGerarNota(e.target.checked)}
+                  className="w-4 h-4 text-primary rounded border-border focus:ring-primary focus:ring-offset-background"
+                />
+                <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                  Gerar Nota Fiscal
+                </span>
+              </label>
             </div>
 
             <div className="md:col-span-3">
@@ -1348,7 +1365,12 @@ export function Pedidos() {
                       className="hover:bg-muted/30 transition-colors group cursor-pointer"
                       onClick={() => setView(o.id)}
                     >
-                      <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground">#{o.id}</td>
+                      <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground flex flex-col gap-1 items-start">
+                        <span>#{o.id}</span>
+                        {o.gerar_nota === false && (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Sem Nota</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5 text-xs font-medium text-foreground">{o.cliente_nome}</td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground hidden lg:table-cell">{o.vendedor_interno?.nome_completo || o.representante?.nome || "-"}</td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground hidden md:table-cell">

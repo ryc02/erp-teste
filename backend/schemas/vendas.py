@@ -44,6 +44,7 @@ class PedidoVendaBase(BaseModel):
     valor_frete: float = 0.0
     desconto_valor: float = 0.0
     valor_total: float = 0.0
+    gerar_nota: Optional[bool] = True
     observacoes: Optional[str] = None
     codigo_rastreio: Optional[str] = None
     url_rastreio: Optional[str] = None
