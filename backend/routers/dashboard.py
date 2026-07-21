@@ -8,14 +8,12 @@ from sqlalchemy.orm import joinedload
 from datetime import date, datetime, time, timedelta
 from models.base import TipoMovimentacao, TIPOS_ENTRADA, TIPOS_SAIDA
 
-from services.auth import check_role
-
-ALLOWED_STOCK_ROLES = ["ADMIN", "GERENTE", "OPERADOR"]
+from services.auth import check_role, get_current_user
 
 router = APIRouter(
     prefix="/dashboard",
     tags=["Dashboard"],
-    dependencies=[Depends(check_role(ALLOWED_STOCK_ROLES))],
+    dependencies=[Depends(get_current_user)],
 )
 
 TIPOS_MOVIMENTACAO_LABELS = {
