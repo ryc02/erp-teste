@@ -28,12 +28,10 @@ def verificar_sefaz():
         html = urllib.request.urlopen(req, context=ctx, timeout=15).read().decode('utf-8', errors='ignore')
         
         # Expressão regular simples para buscar blocos de título de notícia (span class tituloNoticia ou tag <p>)
-        # Como o layout pode variar, vamos buscar pelo texto padrão que costuma estar dentro de <span>
         padrao = r'<span[^>]*class="tituloNoticia"[^>]*>(.*?)</span>'
         matches = re.findall(padrao, html, re.DOTALL | re.IGNORECASE)
 
         if not matches:
-            print("[SefazMonitor] Nenhuma notícia encontrada ou layout do portal mudou.")
             return
 
         for m in matches:
@@ -60,8 +58,10 @@ def verificar_sefaz():
                 db.add(novo_alerta)
                 
         db.commit()
+    except urllib.error.HTTPError as e:
+        pass # Ignora redirects ou bloqueios temporários da SEFAZ
     except Exception as e:
-        print(f"Erro no Sefaz Monitor (Web Scraping): {e}")
+        print(f"[SefazMonitor] Aviso: {e}")
     finally:
         db.close()
 
