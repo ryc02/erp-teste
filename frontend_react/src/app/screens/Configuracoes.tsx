@@ -537,16 +537,14 @@ export function Configuracoes() {
                       <option>Diário (03:00 AM)</option>
                       <option>Semanal (Domingo 03:00 AM)</option>
                     </Select>
-                    <Select label="Retenção de Arquivos (Nuvem)">
-                      <option>Manter últimos 30 dias</option>
-                      <option>Manter últimos 365 dias (Recomendado para Fiscal)</option>
-                    </Select>
                   </div>
                 </FormSection>
                 <FormSection title="Exportação e Compliance (LGPD)">
                   <p className="text-sm text-muted-foreground mb-4">Em caso de auditoria ou requisição legal, você pode gerar um dump completo dos dados.</p>
                   <button className="px-4 py-2 border border-border text-sm font-medium rounded-lg hover:bg-muted text-foreground flex items-center gap-2">
                     <HardDrive size={16} /> Solicitar Exportação Completa de Dados
+                  </button>
+                </FormSection>
               </div>
             )}
             </>

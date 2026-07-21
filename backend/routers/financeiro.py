@@ -661,6 +661,58 @@ def gerar_remessa_cnab(
         "total_contas": len(contas)
     }
 
+@router.get("/inadimplencia")
+def get_inadimplencia(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
+):
+    """
+    Retorna o relatório de inadimplência: contas A RECEBER pendentes cujo vencimento < hoje.
+    """
+    from datetime import date
+    hoje = date.today()
+
+    query = db.query(ContaFinanceira).filter(
+        ContaFinanceira.tipo == "RECEBER",
+        ContaFinanceira.status == "PENDENTE",
+        ContaFinanceira.data_vencimento < hoje
+    )
+    if empresa_id:
+        query = query.filter(ContaFinanceira.empresa_id == empresa_id)
+
+    contas_atrasadas = query.all()
+
+    total_inadimplente = sum(c.valor for c in contas_atrasadas)
+    qtd_contas = len(contas_atrasadas)
+
+    devedores_map = {}
+    for c in contas_atrasadas:
+        cid = c.cliente_id or 0
+        nome = c.cliente.nome_razao if c.cliente else (c.descricao or "Cliente não identificado")
+        dias_atraso = (hoje - c.data_vencimento.date()).days if c.data_vencimento else 0
+
+        if cid not in devedores_map:
+            devedores_map[cid] = {
+                "cliente_id": cid,
+                "nome": nome,
+                "qtd_contas": 0,
+                "total_devido": 0.0,
+                "maior_atraso_dias": 0
+            }
+        devedores_map[cid]["qtd_contas"] += 1
+        devedores_map[cid]["total_devido"] += c.valor
+        devedores_map[cid]["maior_atraso_dias"] = max(devedores_map[cid]["maior_atraso_dias"], dias_atraso)
+
+    top_devedores = list(devedores_map.values())
+    top_devedores.sort(key=lambda x: x["total_devido"], reverse=True)
+
+    return {
+        "total_inadimplente": float(total_inadimplente),
+        "qtd_contas": qtd_contas,
+        "top_devedores": top_devedores
+    }
+
 @router.get("/contas/{conta_id}/recibo/pdf")
 def exportar_recibo_pdf(
     conta_id: int,
