@@ -674,7 +674,18 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="ERP Venner - API", version="2.0", lifespan=lifespan)
+is_production = os.getenv("ENVIRONMENT", "development").lower() in ["production", "prod"]
+enable_docs = os.getenv("ENABLE_DOCS", "false" if is_production else "true").lower() == "true"
+serve_frontend_env = os.getenv("SERVE_FRONTEND", "true" if hasattr(sys, '_MEIPASS') else "false").lower() == "true"
+
+app = FastAPI(
+    title="ERP Venner - API",
+    version="2.0",
+    lifespan=lifespan,
+    docs_url="/docs" if enable_docs else None,
+    redoc_url="/redoc" if enable_docs else None,
+    openapi_url="/openapi.json" if enable_docs else None
+)
 
 
 @app.websocket("/ws")
@@ -682,7 +693,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.contract_connect(websocket)
     try:
         while True:
-            # Mantém a conexão aberta e aguarda mensagens (se houver)
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -746,12 +756,9 @@ def get_frontend_path():
 
 frontend_path = get_frontend_path()
 
-if os.path.exists(frontend_path):
+if serve_frontend_env and os.path.exists(frontend_path):
     from fastapi.responses import FileResponse
     from fastapi import HTTPException
-    
-    # Mount specific asset folders if needed, or just let the catch-all handle it
-    # We will use a catch-all route for the SPA
     
     @app.get("/{full_path:path}")
     def serve_react_app(full_path: str):
@@ -766,7 +773,12 @@ if os.path.exists(frontend_path):
 else:
     @app.get("/")
     def read_root():
-        return {"message": f"ERP Venner Backend Rodando. Frontend não encontrado em {frontend_path}"}
+        return {
+            "name": "ERP Venner - API REST",
+            "status": "online",
+            "version": "2.0",
+            "mode": "Pure API REST Server"
+        }
 
 if __name__ == "__main__":
     import uvicorn
