@@ -687,9 +687,14 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+raw_origins = os.getenv("ALLOWED_ORIGINS", "*").strip()
+allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+if not allowed_origins:
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

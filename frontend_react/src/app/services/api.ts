@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 export const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "/api/v1" : "http://localhost:8000/api/v1");
 
 export const TOKEN_KEY = "venner_jwt";
@@ -37,7 +39,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (res.status === 401 && !path.includes("/auth/login")) {
     clearToken();
-    window.location.href = "/"; // force re-login
+    toast.error("Sessão expirada. Faça login novamente.");
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 600);
     throw new Error("Sessão expirada");
   }
 

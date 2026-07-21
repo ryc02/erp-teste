@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { 
   LayoutDashboard, ShoppingCart, Package, Warehouse, DollarSign,
   Users, BarChart3, Settings, Bell, Search, ChevronDown,
@@ -65,8 +66,8 @@ export function Financeiro() {
     setModalBaixa({ open: true, contaId: c.id, tipo: c.tipo, valorOriginal: c.valor });
   };
 
-  const handlePagarConta = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleBaixa = async () => {
+    if (!modalBaixa.contaId) return;
     try {
       const payload = {
         status: "PAGO",
@@ -75,9 +76,10 @@ export function Financeiro() {
       };
       await api.put(`/financeiro/contas/${modalBaixa.contaId}/status`, payload);
       setModalBaixa({ open: false });
+      toast.success("Baixa realizada com sucesso!");
       loadData();
-    } catch (err) {
-      alert("Erro ao baixar conta.");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao baixar conta.");
     }
   };
 
@@ -91,9 +93,10 @@ export function Financeiro() {
       };
       await api.post("/financeiro/contas", payload);
       setModalNovaConta(false);
+      toast.success("Conta cadastrada com sucesso!");
       loadData();
-    } catch (err) {
-      alert("Erro ao criar conta.");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao criar conta.");
     }
   };
 

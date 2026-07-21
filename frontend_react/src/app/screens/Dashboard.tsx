@@ -24,16 +24,38 @@ const statusConfig = {
 export function Dashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchDashboard = () => {
+    setLoading(true);
+    setErrorMsg(null);
     api.get("/dashboard/home")
       .then(res => setData(res))
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setErrorMsg(err?.message || "Erro ao carregar dados do dashboard.");
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDashboard();
   }, []);
 
   if (loading) return <div className="p-10 text-center text-muted-foreground">Carregando dashboard...</div>;
-  if (!data) return <div className="p-10 text-center text-red-500">Erro ao carregar dashboard.</div>;
+  if (errorMsg || !data) {
+    return (
+      <div className="p-10 text-center space-y-4">
+        <div className="text-red-500 font-medium">{errorMsg || "Erro ao carregar dashboard."}</div>
+        <button
+          onClick={fetchDashboard}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+        >
+          <RefreshCw size={16} /> Tentar Novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 fade-in">

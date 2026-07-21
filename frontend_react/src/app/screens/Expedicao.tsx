@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { TableToolbar, Pagination, Badge, Modal, Input, Select, FormSection, fmt } from "../components/ui/SharedUI";
 import { Eye, Edit3, Trash2, Printer, Package, Truck, CheckCircle } from "lucide-react";
 import { api, API_BASE } from "../services/api";
@@ -28,9 +29,10 @@ export function Expedicao() {
   const handleAcao = async (url: string, ids: number[]) => {
     try {
       await api.post(`/expedicao/acao-massa/${url}`, { pedido_ids: ids });
+      toast.success("Ação executada com sucesso!");
       fetchPedidos();
     } catch (e: any) {
-      alert(e.message || "Erro na ação");
+      toast.error(e.message || "Erro na ação");
     }
   };
 
@@ -52,7 +54,7 @@ export function Expedicao() {
       const win = window.open("", "_blank");
       if (win) { win.document.write(html); win.document.close(); }
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 

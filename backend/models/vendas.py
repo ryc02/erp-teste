@@ -51,3 +51,16 @@ class PedidoVendaItem(Base):
 
     pedido = relationship("PedidoVenda", back_populates="itens")
     produto = relationship("Produto")
+
+class PedidoVendaHistorico(Base):
+    __tablename__ = "pedidos_venda_historico"
+    id = Column(Integer, primary_key=True, index=True)
+    pedido_id = Column(Integer, ForeignKey("pedidos_venda.id"))
+    status_anterior = Column(String, nullable=True)
+    status_novo = Column(String, nullable=False)
+    usuario = Column(String, nullable=True)
+    observacao = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    pedido = relationship("PedidoVenda")
+

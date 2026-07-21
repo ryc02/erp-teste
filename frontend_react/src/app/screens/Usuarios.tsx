@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { api } from "../services/api";
 import { TableToolbar, Pagination, Badge, Modal, Input, Select } from "../components/ui/SharedUI";
 import { Edit3, Trash2, Plus, Save, Key } from "lucide-react";
@@ -63,11 +64,11 @@ function UsuarioForm({ initial, roles, onClose, onSave }: {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.username || !form.email || !form.nome_completo) {
-      alert("Preencha nome, e-mail e usuário.");
+      toast.warning("Preencha nome, e-mail e usuário.");
       return;
     }
     if (!initial && !form.password) {
-      alert("Informe a senha inicial.");
+      toast.warning("Informe a senha inicial.");
       return;
     }
     setLoading(true);
@@ -86,12 +87,14 @@ function UsuarioForm({ initial, roles, onClose, onSave }: {
 
       if (initial?.id) {
         await api.put(`/usuarios/${initial.id}`, payload);
+        toast.success("Usuário atualizado com sucesso!");
       } else {
         await api.post("/usuarios", payload);
+        toast.success("Usuário criado com sucesso!");
       }
       onSave();
     } catch (err: any) {
-      alert(err?.message || "Erro ao salvar usuário");
+      toast.error(err?.message || "Erro ao salvar usuário");
     } finally {
       setLoading(false);
     }
@@ -200,9 +203,10 @@ export function Usuarios() {
     if (!confirm("Desativar este usuário?")) return;
     try {
       await api.delete(`/usuarios/${id}`);
+      toast.success("Usuário desativado com sucesso");
       loadData();
     } catch (err: any) {
-      alert(err?.message || "Erro ao desativar usuário");
+      toast.error(err?.message || "Erro ao desativar usuário");
     }
   }
 

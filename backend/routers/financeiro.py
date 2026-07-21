@@ -660,3 +660,71 @@ def gerar_remessa_cnab(
         "arquivo": "\n".join(linhas),
         "total_contas": len(contas)
     }
+
+@router.get("/contas/{conta_id}/recibo/pdf")
+def exportar_recibo_pdf(
+    conta_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    F4: Gera um recibo em PDF para a conta financeira informada.
+    """
+    conta = db.query(ContaFinanceira).filter(ContaFinanceira.id == conta_id).first()
+    if not conta:
+        raise HTTPException(status_code=404, detail="Conta financeira não encontrada")
+
+    import io
+    from fastapi.responses import StreamingResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.units import cm
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    titulo = "RECIBO DE PAGAMENTO" if conta.tipo == "PAGAR" else "RECIBO DE RECEBIMENTO"
+    elements.append(Paragraph(f"<b>{titulo}</b>", styles['Title']))
+    elements.append(Paragraph(f"Documento Ref. #{conta.id}", styles['Normal']))
+    elements.append(Spacer(1, 0.5*cm))
+
+    data_recibo = [
+        ["Descrição:", conta.descricao],
+        ["Tipo:", "Conta a Pagar" if conta.tipo == "PAGAR" else "Conta a Receber"],
+        ["Status:", conta.status],
+        ["Valor:", f"R$ {conta.valor:,.2f}"],
+        ["Data Vencimento:", conta.data_vencimento.strftime("%d/%m/%Y") if conta.data_vencimento else "-"],
+        ["Data Pagamento:", conta.data_pagamento.strftime("%d/%m/%Y %H:%M") if conta.data_pagamento else "-"],
+        ["Cliente / Fornecedor:", conta.cliente.nome_razao if conta.cliente else "N/A"],
+        ["Observações:", conta.observacoes or "N/A"]
+    ]
+
+    t = Table(data_recibo, colWidths=[5*cm, 11*cm])
+    t.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('BACKGROUND', (0,0), (0,-1), colors.whitesmoke),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('PADDING', (0,0), (-1,-1), 6),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 2.5*cm))
+
+    sig_data = [
+        ["________________________________________"],
+        ["Assinatura do Responsável"],
+        [f"Emido em {datetime.now().strftime('%d/%m/%Y %H:%M')}"]
+    ]
+    t_sig = Table(sig_data, colWidths=[16*cm])
+    t_sig.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER')]))
+    elements.append(t_sig)
+
+    doc.build(elements)
+    buffer.seek(0)
+    return StreamingResponse(buffer, media_type="application/pdf", headers={
+        "Content-Disposition": f"attachment; filename=Recibo_{conta.id}.pdf"
+    })
+

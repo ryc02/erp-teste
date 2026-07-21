@@ -10,7 +10,7 @@ from .produtividade import (
     ColaboradorProdutividade,
     ApontamentoProdutividade,
 )
-from .vendas import PedidoVenda, PedidoVendaItem
+from .vendas import PedidoVenda, PedidoVendaItem, PedidoVendaHistorico
 from .comercial.proposta import PropostaComercial, PropostaComercialItem
 from .auditoria import AuditoriaLog
 from comercial.models.cliente import ClienteComercial

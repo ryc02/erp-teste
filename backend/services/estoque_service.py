@@ -86,6 +86,24 @@ class EstoqueService:
                 )
                 EstoqueService.registrar_movimentacao(db, comp_mov, empresa_id, is_kit_component=True)
 
+        # F3: Alerta de estoque mínimo via WebSocket se o saldo cair abaixo do mínimo
+        if produto.estoque_minimo and produto.estoque_minimo > 0:
+            saldo_atual = produto.estoque_atual
+            if saldo_atual <= produto.estoque_minimo:
+                try:
+                    import asyncio
+                    from services.websocket_service import manager
+                    loop = asyncio.get_running_loop()
+                    if loop:
+                        msg = {
+                            "type": "ALERTA_ESTOQUE",
+                            "titulo": "Estoque Mínimo Atingido",
+                            "mensagem": f"O produto '{produto.nome}' atingiu o estoque mínimo (Atual: {saldo_atual}, Mínimo: {produto.estoque_minimo})."
+                        }
+                        loop.create_task(manager.broadcast(msg))
+                except Exception:
+                    pass
+
         return db_mov
 
     @staticmethod
