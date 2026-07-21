@@ -21,11 +21,33 @@ const tabs = [
 
 export function Configuracoes() {
   const [activeTab, setActiveTab] = useState("geral");
-  const { can } = useAuth();
+  const { user, can } = useAuth();
   
   const [configVendas, setConfigVendas] = useState<any>(null);
   const [configExpedicao, setConfigExpedicao] = useState<any>(null);
   const [templateEtiqueta, setTemplateEtiqueta] = useState<any>(null);
+
+  const isTabRestricted = (tabId: string) => {
+    const roleName = user?.role?.nome?.toUpperCase() || "";
+    const isAdminOrGerente = roleName === "ADMIN" || roleName === "GERENTE";
+
+    if (["usuarios", "seguranca", "backup"].includes(tabId)) {
+      return !isAdminOrGerente;
+    }
+    if (tabId === "vendas" && !isAdminOrGerente && !can("vendas", "view") && !can("pedidos", "view")) {
+      return true;
+    }
+    if (tabId === "expedicao" && !isAdminOrGerente && !can("expedicao", "view")) {
+      return true;
+    }
+    if (tabId === "financeiro" && !isAdminOrGerente && !can("financeiro", "view")) {
+      return true;
+    }
+    if (tabId === "fiscal" && !isAdminOrGerente && !can("fiscal", "view")) {
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (activeTab === "vendas") {
@@ -47,6 +69,10 @@ export function Configuracoes() {
   }, [activeTab]);
 
   const handleSave = async () => {
+    if (isTabRestricted(activeTab)) {
+      alert("Você não possui permissão para alterar esta seção de configurações.");
+      return;
+    }
     try {
       if (activeTab === "vendas" && configVendas) {
         await api.put("/configuracoes/vendas", configVendas);
@@ -71,19 +97,19 @@ export function Configuracoes() {
     }
   };
 
-  if (!can('admin', 'view')) {
-    return <div className="p-8 text-center text-muted-foreground">Acesso negado. Apenas administradores podem visualizar esta tela.</div>;
-  }
-
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Floating Save Bar */}
       <div className="flex-shrink-0 mb-4 bg-card rounded-xl border border-border p-4 shadow-sm flex items-center justify-between sticky top-0 z-10">
         <div>
           <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Painel de Configurações</h2>
-          <p className="text-xs text-muted-foreground">Suas alterações afetarão todos os usuários do ERP Venner.</p>
+          <p className="text-xs text-muted-foreground">Preferências do sistema e opções configuráveis por módulo.</p>
         </div>
-        <button onClick={handleSave} className="px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium flex items-center gap-2 shadow-sm transition-all hover:shadow">
+        <button
+          onClick={handleSave}
+          disabled={isTabRestricted(activeTab)}
+          className={`px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-sm transition-all ${isTabRestricted(activeTab) ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90 hover:shadow"}`}
+        >
           <Save size={16} /> Salvar Alterações
         </button>
       </div>
@@ -115,7 +141,17 @@ export function Configuracoes() {
         <div className="flex-1 bg-card rounded-xl border border-border overflow-y-auto custom-scrollbar p-6">
           <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
             
-            {activeTab === "geral" && (
+            {isTabRestricted(activeTab) ? (
+              <div className="p-10 text-center bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3">
+                <Shield className="mx-auto text-amber-500" size={40} />
+                <h3 className="text-base font-bold text-foreground">Acesso Restrito nesta Opção</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Você pode visualizar a tela de configurações, porém esta categoria específica é reservada para usuários com perfil de Administrador ou Gerência.
+                </p>
+              </div>
+            ) : (
+              <>
+                {activeTab === "geral" && (
               <div className="space-y-6">
                 <FormSection title="Dados Institucionais">
                   <div className="grid grid-cols-2 gap-4">
@@ -511,11 +547,10 @@ export function Configuracoes() {
                   <p className="text-sm text-muted-foreground mb-4">Em caso de auditoria ou requisição legal, você pode gerar um dump completo dos dados.</p>
                   <button className="px-4 py-2 border border-border text-sm font-medium rounded-lg hover:bg-muted text-foreground flex items-center gap-2">
                     <HardDrive size={16} /> Solicitar Exportação Completa de Dados
-                  </button>
-                </FormSection>
               </div>
             )}
-            
+            </>
+            )}
           </div>
         </div>
       </div>

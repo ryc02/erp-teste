@@ -240,7 +240,7 @@ function MainApp() {
 
         <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">
           {navGroups.map((group, i) => {
-            const visibleItems = group.items.filter(item => item.id === 'dashboard' || can(item.id, 'view') || can('admin', 'view'));
+            const visibleItems = group.items.filter(item => item.id === 'dashboard' || item.id === 'configuracoes' || can(item.id, 'view') || can('admin', 'view'));
             if (visibleItems.length === 0) return null;
             
             return (
