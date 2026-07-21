@@ -54,6 +54,7 @@ class PedidoVendaBase(BaseModel):
     data_prevista: Optional[datetime] = None
     transportadora: Optional[str] = None
     natureza_operacao: Optional[str] = None
+    empresa_faturadora_id: Optional[int] = None
 
 class PedidoVendaCreate(PedidoVendaBase):
     itens: List[PedidoVendaItemCreate]

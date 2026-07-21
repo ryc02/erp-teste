@@ -28,6 +28,8 @@ export function RepresentantesForm({ onClose, onSave, initial }: { onClose: () =
   });
   const [loading, setLoading] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
+  
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
 
   const set = (field: string, val: any) => setForm((f: any) => ({ ...f, [field]: val }));
 
@@ -54,7 +56,7 @@ export function RepresentantesForm({ onClose, onSave, initial }: { onClose: () =
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.nome) { alert("Preencha o nome do vendedor"); return; }
+    if (!form.nome) { setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Preencha o nome do vendedor" }); return; }
     
     setLoading(true);
     try {
@@ -69,9 +71,12 @@ export function RepresentantesForm({ onClose, onSave, initial }: { onClose: () =
       } else {
         await api.post("/comercial/representantes", payload);
       }
-      onSave();
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Representante salvo com sucesso!" });
+      setTimeout(() => {
+          onSave();
+      }, 1500); // Aguarda para fechar após o feedback
     } catch (err: any) {
-      alert(err?.message || "Erro ao salvar vendedor/representante");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: err.response?.data?.detail || err?.message || "Erro ao salvar vendedor/representante" });
     } finally {
       setLoading(false);
     }
@@ -187,6 +192,26 @@ export function RepresentantesForm({ onClose, onSave, initial }: { onClose: () =
           <Save size={14} /> {loading ? "Salvando..." : "Salvar Vendedor"}
         </button>
       </div>
+
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                type="button"
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
     </form>
   );
 }

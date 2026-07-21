@@ -10,6 +10,15 @@ class EstoqueService:
         produto = db.query(models.Produto).filter(models.Produto.id == produto_id).first()
         if not produto:
             return 0
+            
+        if produto.tipo_produto == "Kit" and produto.itens_kit:
+            max_kits = float('inf')
+            for item in produto.itens_kit:
+                saldo_comp = EstoqueService.get_saldo_disponivel(db, item.produto_id)
+                # Ensure we avoid division by zero
+                qtd_necessaria = item.quantidade if item.quantidade > 0 else 1
+                max_kits = min(max_kits, int(saldo_comp // qtd_necessaria))
+            return max_kits if max_kits != float('inf') else 0
         
         # Soma de reservas ativas
         reservas_ativas = db.query(func.sum(models.ReservaEstoque.quantidade))\
@@ -28,7 +37,7 @@ class EstoqueService:
             raise HTTPException(status_code=400, detail="Movimentação bloqueada: Existe uma sessão de inventário aberta.")
 
     @staticmethod
-    def registrar_movimentacao(db: Session, mov: schemas.MovimentacaoCreate):
+    def registrar_movimentacao(db: Session, mov: schemas.MovimentacaoCreate, empresa_id: int = None, is_kit_component: bool = False):
         tipo_db = normalizar_tipo_movimentacao(mov.tipo)
 
         if mov.quantidade <= 0 and tipo_db != TipoMovimentacao.AJUSTE:
@@ -55,11 +64,28 @@ class EstoqueService:
         # 3. Criar registro de movimentação
         mov_data = mov.model_dump()
         mov_data['tipo'] = tipo_db
+        mov_data['empresa_id'] = empresa_id
 
+        # Se for um kit, registramos a movimentação normalmente para manter o histórico.
         db_mov = models.MovimentacaoEstoque(**mov_data)
+            
         db.add(db_mov)
         db.commit()
         db.refresh(db_mov)
+
+        # 4. Baixar componentes do Kit
+        if produto.tipo_produto == "Kit" and produto.itens_kit and not is_kit_component:
+            for item in produto.itens_kit:
+                comp_mov = schemas.MovimentacaoCreate(
+                    produto_id=item.produto_id,
+                    tipo=mov.tipo,
+                    quantidade=mov.quantidade * item.quantidade,
+                    usuario=mov.usuario,
+                    origem=f"{mov.origem or 'Manual'} (Kit #{produto.id})",
+                    observacao=f"Composição do Kit {produto.sku or produto.nome}"
+                )
+                EstoqueService.registrar_movimentacao(db, comp_mov, empresa_id, is_kit_component=True)
+
         return db_mov
 
     @staticmethod

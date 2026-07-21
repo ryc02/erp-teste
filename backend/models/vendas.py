@@ -5,6 +5,8 @@ from database import Base
 class PedidoVenda(Base):
     __tablename__ = "pedidos_venda"
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
+    empresa_faturadora_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
     tipo = Column(String, default="PEDIDO") # PEDIDO, COTACAO
     cliente_id = Column(Integer, ForeignKey("comercial_clientes.id"), nullable=True)
     cliente_nome = Column(String) 

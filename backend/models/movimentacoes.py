@@ -21,6 +21,7 @@ class Lote(Base):
 class MovimentacaoEstoque(Base):
     __tablename__ = "movimentacoes_estoque"
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
     produto_id = Column(Integer, ForeignKey("produtos.id"), index=True)
     lote_id = Column(Integer, ForeignKey("estoque_lotes.id"), nullable=True)
     tipo = Column(Enum(TipoMovimentacao))

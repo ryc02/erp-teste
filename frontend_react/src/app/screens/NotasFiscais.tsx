@@ -31,6 +31,9 @@ export function NotasFiscais() {
   const [showCceModal, setShowCceModal] = useState(false);
   const [showInutilizarModal, setShowInutilizarModal] = useState(false);
   
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  
   const [cceText, setCceText] = useState("");
   const [formInutilizar, setFormInutilizar] = useState({ ano: new Date().getFullYear().toString().slice(-2), serie: "1", num_inicial: "", num_final: "", justificativa: "" });
 
@@ -45,9 +48,60 @@ export function NotasFiscais() {
       setNotas(resNotas as any[]);
       setMarcadores(resMarcadores as any[]);
       setAlertasSefaz(resAlertas as any[]);
+      
+      // Auto-open Pré-NFe
+      const params = new URLSearchParams(window.location.search);
+      const faturar = params.get("faturar_pedido");
+      if (faturar && !initialData) {
+        try {
+          const res: any = await api.get(`/fiscal/preparar-faturamento/${faturar}`);
+          if (res.pode_faturar) {
+            // Mapeia rascunho para o formato do DrawerIncluirNota
+            const dados = {
+              cabecalho: {
+                natureza_operacao: res.natureza_operacao,
+                dest_nome: res.cliente?.nome || "",
+                dest_cnpj: res.cliente?.cpf_cnpj || "",
+                dest_cep: res.cliente?.endereco || "", // fallback (melhor preencher manual)
+                dest_numero: ""
+              },
+              totais: {
+                produtos: res.valor_produtos,
+                frete: res.frete,
+                desconto: res.desconto,
+                total_nota: res.valor_total,
+                base_icms: res.base_icms,
+                valor_icms: res.valor_icms,
+                valor_ipi: res.valor_ipi
+              },
+              itens: res.itens.map((it: any, index: number) => ({
+                id: index,
+                descricao: it.descricao,
+                unidade: it.unidade,
+                ncm: it.ncm,
+                cfop: it.cfop,
+                qtde: it.quantidade,
+                preco_un: it.valor_unitario,
+                total: it.valor_total
+              }))
+            };
+            setInitialData(dados);
+            setEditingId(null);
+            setShowIncludeModal(true);
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname + "?modulo=fiscal");
+            setFeedbackModal({ open: true, type: "success", title: "Impostos Calculados", message: "A Pré-NFe foi gerada com sucesso com base no pedido de venda." });
+          } else {
+            setFeedbackModal({ open: true, type: "error", title: "Malha Fina", message: "Este pedido contém inconsistências que impedem o faturamento:\n" + res.erros_validacao.join("\n") });
+          }
+        } catch (e: any) {
+          setFeedbackModal({ open: true, type: "error", title: "Erro na Pré-NFe", message: e.response?.data?.detail || "Erro ao preparar faturamento." });
+        }
+      }
     } catch (err) {
       console.error(err);
-      alert("Erro ao carregar Notas Fiscais.");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: "Erro ao carregar Notas Fiscais." });
     } finally {
       setLoading(false);
     }
@@ -67,37 +121,45 @@ export function NotasFiscais() {
   };
 
   const handleEnviarLote = async () => {
-    if (selectedNotas.length === 0) return;
+    if (selectedNotas.length === 0) {
+        setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione ao menos uma nota para enviar em lote." });
+        return;
+    }
     try {
       const res: any = await api.post("/fiscal/enviar-lote", { notas: selectedNotas });
-      alert(res.data.mensagem);
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: res.data.mensagem });
       setSelectedNotas([]);
       loadData();
     } catch (err) {
-      alert("Erro ao processar envio em lote.");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: "Erro ao processar envio em lote." });
     }
   };
 
   const handleProcessarFila = async () => {
-    if (!window.confirm("ATENÇÃO: Tem certeza que deseja ativar a Contingência Offline?\n\nEsta ação forçará todas as notas travadas na fila a serem impressas com tpEmis=9. Use isso APENAS se a SEFAZ estiver comprovadamente fora do ar ou sua internet local estiver inativa.")) {
-      return;
-    }
-    try {
-      const res: any = await api.post("/fiscal/processar-fila-contingencia");
-      alert(`${res.data.contingencias_ativadas} notas foram processadas em Contingência Offline (tpEmis=9).`);
-      loadData();
-    } catch (e: any) {
-      alert("Erro ao processar fila.");
-    }
+    setConfirmModal({
+        open: true,
+        title: "Ativar Contingência Offline?",
+        message: "Esta ação forçará todas as notas travadas na fila a serem impressas com tpEmis=9. Use isso APENAS se a SEFAZ estiver comprovadamente fora do ar ou sua internet local estiver inativa.",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try {
+              const res: any = await api.post("/fiscal/processar-fila-contingencia");
+              setFeedbackModal({ open: true, type: "success", title: "Fila Processada", message: `${res.data.contingencias_ativadas} notas foram processadas em Contingência Offline (tpEmis=9).` });
+              loadData();
+            } catch (e: any) {
+              setFeedbackModal({ open: true, type: "error", title: "Erro", message: "Erro ao processar fila." });
+            }
+        }
+    });
   };
   
   const handleEnviarEmail = async (id: number) => {
     try {
       const res: any = await api.post(`/fiscal/notas/${id}/enviar-email`);
-      alert(res.data.message);
+      setFeedbackModal({ open: true, type: "success", title: "E-mail Enviado", message: res.data.message });
       loadData();
     } catch (e: any) {
-      alert("Erro ao enviar e-mail: " + (e.response?.data?.detail || e.message));
+      setFeedbackModal({ open: true, type: "error", title: "Erro ao Enviar", message: "Erro ao enviar e-mail: " + (e.response?.data?.detail || e.message) });
     }
   };
   
@@ -144,53 +206,67 @@ export function NotasFiscais() {
         // Envia para o backend
         if (isEdit && editingId) {
             const res: any = await api.put(`/fiscal/editar/${editingId}`, payload);
-            alert(res.data.mensagem);
+            setFeedbackModal({ open: true, type: "success", title: "Nota Atualizada!", message: res.data.mensagem });
         } else {
             const res: any = await api.post("/fiscal/emitir", payload);
-            alert(`Nota gerada com sucesso! NF-e ID: ${res.data.nota_id}. Total: R$ ${dados.totais.total_nota}`);
+            setFeedbackModal({ open: true, type: "success", title: "Nota Gerada com Sucesso!", message: `A NF-e ID: ${res.data.nota_id} foi emitida. Total: R$ ${dados.totais.total_nota}` });
         }
         setShowIncludeModal(false);
         setEditingId(null);
         setInitialData(null);
         loadData();
     } catch (e: any) {
+        let title = "Erro de Emissão";
         let msg = "Ocorreu um erro inesperado ao emitir a nota.";
         if (e.response?.data?.detail) {
             const detail = e.response.data.detail;
             if (Array.isArray(detail)) {
-                msg = "❌ Campos Incompletos:\n\nFaltam informações obrigatórias (como quantidades, valores, NCM ou CFOP). Verifique se você preencheu corretamente a tabela de produtos.";
+                title = "Campos Incompletos";
+                msg = "Faltam informações obrigatórias (como quantidades, valores, NCM ou CFOP). Verifique se você preencheu corretamente a tabela de produtos e a aba de impostos.";
             } else if (typeof detail === 'string') {
                 if (detail.includes("CNPJ") || detail.includes("CPF")) {
-                    msg = "❌ Documento Inválido:\n\nO CPF ou CNPJ do destinatário está em branco, incompleto ou é inválido.\nPor segurança, a SEFAZ exige um documento real para autorizar a nota. Verifique os números digitados na aba 'Destinatário'.";
+                    title = "Documento Inválido (SEFAZ)";
+                    msg = "O CPF ou CNPJ do destinatário está em branco, incompleto ou é inválido. Por segurança, a SEFAZ exige um documento real para autorizar a nota. Verifique os números digitados na aba 'Destinatário'.";
                 } else if (detail.includes("CEP")) {
-                    msg = "❌ CEP Inválido:\n\nO CEP digitado não possui 8 números. Por favor, corrija na aba 'Destinatário'.";
+                    title = "CEP Inválido (SEFAZ)";
+                    msg = "O CEP digitado não possui 8 números. Por favor, corrija na aba 'Destinatário'.";
                 } else {
-                    msg = "❌ Atenção:\n\n" + detail;
+                    title = "Atenção SEFAZ";
+                    msg = detail;
                 }
             }
         }
-        alert(msg);
+        setFeedbackModal({ open: true, type: "error", title, message: msg });
     }
   };
   
   const handleCancelarNotas = async () => {
-      if (selectedNotas.length === 0) return;
-      if(window.confirm(`Deseja realmente cancelar ${selectedNotas.length} nota(s)?`)) {
-          try {
-              const res: any = await api.post("/fiscal/cancelar-lote", { notas: selectedNotas });
-              alert(res.data.mensagem);
-              setSelectedNotas([]);
-              setShowDropdown(false);
-              loadData();
-          } catch (err: any) {
-              alert(err.response?.data?.detail || "Erro ao cancelar o lote de notas.");
-          }
+      if (selectedNotas.length === 0) {
+          setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione ao menos uma nota para cancelar." });
+          return;
       }
+      setConfirmModal({
+          open: true,
+          title: "Cancelar Notas",
+          message: `Deseja realmente cancelar ${selectedNotas.length} nota(s)?`,
+          onConfirm: async () => {
+              setConfirmModal(prev => ({ ...prev, open: false }));
+              try {
+                  const res: any = await api.post("/fiscal/cancelar-lote", { notas: selectedNotas });
+                  setFeedbackModal({ open: true, type: "success", title: "Notas Canceladas", message: res.data.mensagem });
+                  setSelectedNotas([]);
+                  setShowDropdown(false);
+                  loadData();
+              } catch (err: any) {
+                  setFeedbackModal({ open: true, type: "error", title: "Erro ao Cancelar", message: err.response?.data?.detail || "Erro ao cancelar o lote de notas." });
+              }
+          }
+      });
   };
 
   const handleAbrirCce = () => {
       if (selectedNotas.length !== 1) {
-          alert("Para emitir uma Carta de Correção (CC-e), selecione exatamente 1 (uma) nota fiscal.");
+          setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Para emitir uma Carta de Correção (CC-e), selecione exatamente 1 (uma) nota fiscal." });
           return;
       }
       setShowDropdown(false);
@@ -202,25 +278,29 @@ export function NotasFiscais() {
       setShowInutilizarModal(true);
   };
 
-  const handleEditarNota = async () => {
+  const handleAbrirNota = async (id: number) => {
+      try {
+          const res: any = await api.get(`/fiscal/notas/local/${id}`);
+          setInitialData(res.data);
+          setEditingId(id);
+          setShowIncludeModal(true);
+      } catch(err: any) {
+          setFeedbackModal({ open: true, type: "error", title: "Erro ao Abrir", message: err.response?.data?.detail || "Nota não pode ser editada (pode ser uma nota apenas da Olist)." });
+      }
+  };
+
+  const handleEditarNota = () => {
       if (selectedNotas.length !== 1) {
-          alert("Selecione apenas 1 (uma) nota para editar.");
+          setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione apenas 1 (uma) nota para editar." });
           return;
       }
       setShowDropdown(false);
-      try {
-          const res: any = await api.get(`/fiscal/notas/local/${selectedNotas[0]}`);
-          setInitialData(res.data);
-          setEditingId(selectedNotas[0]);
-          setShowIncludeModal(true);
-      } catch(err: any) {
-          alert(err.response?.data?.detail || "Nota não pode ser editada (pode ser uma nota apenas da Olist).");
-      }
+      handleAbrirNota(selectedNotas[0]);
   };
 
   const handleGerarReentrada = async () => {
       if (selectedNotas.length !== 1) {
-          alert("Selecione apenas 1 (uma) nota base para gerar a Reentrada.");
+          setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione apenas 1 (uma) nota base para gerar a Reentrada." });
           return;
       }
       setShowDropdown(false);
@@ -240,13 +320,13 @@ export function NotasFiscais() {
           setEditingId(null); // Vai criar uma nova
           setShowIncludeModal(true);
       } catch(err: any) {
-          alert(err.response?.data?.detail || "Erro ao carregar dados locais para reentrada.");
+          setFeedbackModal({ open: true, type: "error", title: "Erro na Reentrada", message: err.response?.data?.detail || "Erro ao carregar dados locais para reentrada." });
       }
   };
 
   const handleEnviarInutilizacao = async () => {
       if (formInutilizar.justificativa.length < 15) {
-          alert("A justificativa deve ter pelo menos 15 caracteres.");
+          setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "A justificativa deve ter pelo menos 15 caracteres." });
           return;
       }
       try {
@@ -255,17 +335,17 @@ export function NotasFiscais() {
               num_inicial: parseInt(formInutilizar.num_inicial),
               num_final: parseInt(formInutilizar.num_final)
           });
-          alert(res.data.mensagem);
+          setFeedbackModal({ open: true, type: "success", title: "Inutilização", message: res.data.mensagem });
           setShowInutilizarModal(false);
           setFormInutilizar({ ano: new Date().getFullYear().toString().slice(-2), serie: "1", num_inicial: "", num_final: "", justificativa: "" });
       } catch (err: any) {
-          alert(err.response?.data?.detail || "Erro ao inutilizar numeração.");
+          setFeedbackModal({ open: true, type: "error", title: "Erro na Inutilização", message: err.response?.data?.detail || "Erro ao inutilizar numeração." });
       }
   };
 
   const handleEnviarCce = async () => {
       if (cceText.length < 15 || cceText.length > 1000) {
-          alert("A correção deve ter entre 15 e 1000 caracteres.");
+          setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "A correção deve ter entre 15 e 1000 caracteres." });
           return;
       }
       try {
@@ -273,13 +353,13 @@ export function NotasFiscais() {
               nota_id: selectedNotas[0],
               texto: cceText
           });
-          alert(res.data.mensagem);
+          setFeedbackModal({ open: true, type: "success", title: "CC-e Emitida", message: res.data.mensagem });
           setShowCceModal(false);
           setCceText("");
           setSelectedNotas([]);
           loadData();
       } catch (err: any) {
-          alert(err.response?.data?.detail || "Erro ao emitir CC-e.");
+          setFeedbackModal({ open: true, type: "error", title: "Erro na CC-e", message: err.response?.data?.detail || "Erro ao emitir CC-e." });
       }
   };
 
@@ -293,9 +373,10 @@ export function NotasFiscais() {
 
   const filteredNotas = notas.filter(n => {
     if (search && !n.destinatario?.toLowerCase().includes(search.toLowerCase())) return false;
-    if (activeTab === "pendentes" && n.status !== "Pendente") return false;
-    if (activeTab === "emitidas" && !(n.status === "Autorizada" || n.status === "Emitida DANFE")) return false;
-    if (activeTab === "canceladas" && n.status === "Cancelada") return false;
+    const statusLower = (n.status || "").toLowerCase();
+    if (activeTab === "pendentes" && !statusLower.includes("pendente") && !statusLower.includes("aguardando")) return false;
+    if (activeTab === "emitidas" && !statusLower.includes("autorizada") && !statusLower.includes("emitida")) return false;
+    if (activeTab === "canceladas" && !statusLower.includes("cancelada") && !statusLower.includes("rejeitada")) return false;
     
     // Filtro 30 dias (Simulado verificando a string, mas o correto seria parse de Date)
     if (is30Days) {
@@ -380,7 +461,7 @@ export function NotasFiscais() {
           
           <div className="flex items-center gap-2">
             <button onClick={handleProcessarFila} className="px-3 py-1.5 text-xs flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full border border-orange-200 bg-orange-50/10 text-orange-600"><CheckCircle size={14} /> Processar Fila Offline (SEFAZ Inativa)</button>
-            <button onClick={() => selectedNotas.length ? setShowPrintModal(true) : alert("Selecione ao menos uma nota para imprimir.")} className="px-3 py-1.5 text-xs flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full"><Printer size={14} /> imprimir DANFEs</button>
+            <button onClick={() => selectedNotas.length ? setShowPrintModal(true) : setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione ao menos uma nota para imprimir." })} className="px-3 py-1.5 text-xs flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full"><Printer size={14} /> imprimir DANFEs</button>
             
             <button onClick={() => {setShowIncludeModal(true); setInitialData(null); setEditingId(null);}} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors shadow-sm">
               <Plus size={16} /> Incluir Nota Fiscal
@@ -420,9 +501,9 @@ export function NotasFiscais() {
       <div className="px-6 flex gap-6 border-b border-border bg-card">
         {[
           { id: "todas", label: "todas", color: "bg-slate-400", count: notas.length },
-          { id: "pendentes", label: "pendentes", color: "bg-amber-400", count: notas.filter(n => n.status === "Pendente").length },
-          { id: "emitidas", label: "emitidas", color: "bg-emerald-500", count: notas.filter(n => n.status === "Autorizada" || n.status === "Emitida DANFE").length },
-          { id: "canceladas", label: "canceladas", color: "bg-red-500", count: notas.filter(n => n.status === "Cancelada").length },
+          { id: "pendentes", label: "pendentes", color: "bg-amber-400", count: notas.filter(n => (n.status || "").toLowerCase().includes("pendente") || (n.status || "").toLowerCase().includes("aguardando")).length },
+          { id: "emitidas", label: "emitidas", color: "bg-emerald-500", count: notas.filter(n => (n.status || "").toLowerCase().includes("autorizada") || (n.status || "").toLowerCase().includes("emitida")).length },
+          { id: "canceladas", label: "canceladas", color: "bg-red-500", count: notas.filter(n => (n.status || "").toLowerCase().includes("cancelada") || (n.status || "").toLowerCase().includes("rejeitada")).length },
         ].map(t => (
           <button 
             key={t.id}
@@ -453,6 +534,7 @@ export function NotasFiscais() {
               <th className="py-3 px-2 font-medium">Cliente</th>
               <th className="py-3 px-2 font-medium">UF</th>
               <th className="py-3 px-2 font-medium text-right">Valor</th>
+              <th className="py-3 px-4 font-medium">Status</th>
               <th className="py-3 px-4 font-medium">Marcadores</th>
               <th className="py-3 px-4"></th>
             </tr>
@@ -464,7 +546,15 @@ export function NotasFiscais() {
               <tr><td colSpan={8} className="py-8 text-center text-sm text-muted-foreground">Nenhuma nota encontrada.</td></tr>
             ) : (
               filteredNotas.map((n, i) => (
-                <tr key={n.id} className={`text-xs hover:bg-muted/50 transition-colors ${selectedNotas.includes(n.id) ? 'bg-primary/5' : ''}`}>
+                <tr 
+                  key={n.id} 
+                  className={`text-xs hover:bg-muted/50 transition-colors cursor-pointer ${selectedNotas.includes(n.id) ? 'bg-primary/5' : ''}`}
+                  onClick={(e) => {
+                      if ((e.target as HTMLElement).tagName !== 'INPUT' && !(e.target as HTMLElement).closest('button')) {
+                          handleAbrirNota(n.id);
+                      }
+                  }}
+                >
                   <td className="py-2.5 px-4 text-center">
                     <input 
                       type="checkbox" 
@@ -480,6 +570,17 @@ export function NotasFiscais() {
                   <td className="py-2.5 px-2 font-medium text-foreground">{n.destinatario}</td>
                   <td className="py-2.5 px-2 text-muted-foreground">SP</td>
                   <td className="py-2.5 px-2 text-right text-foreground font-medium">{fmtFull(n.valor)}</td>
+                  <td className="py-2.5 px-4 flex gap-1.5 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-1 border ${
+                      (n.status || "").toLowerCase().includes("rejeitada") || (n.status || "").toLowerCase().includes("cancelada") 
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : (n.status || "").toLowerCase().includes("emitida") || (n.status || "").toLowerCase().includes("autorizada")
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}>
+                      {n.status || "Pendente"}
+                    </span>
+                  </td>
                   <td className="py-2.5 px-4 flex gap-1.5 flex-wrap">
                     {n.status.toLowerCase().includes("emitida") && (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-[10px] text-emerald-800 flex items-center gap-1 border border-emerald-200">
@@ -642,6 +743,59 @@ export function NotasFiscais() {
         </div>
       </Modal>
 
+      {/* Modal de Feedback */}
+      <Modal 
+        title={feedbackModal.title} 
+        open={feedbackModal.open} 
+        onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}
+      >
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                {feedbackModal.type === 'error' ? <AlertCircle size={24} /> : feedbackModal.type === 'warning' ? <AlertCircle size={24} /> : <CheckCircle size={24} />}
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
+
+      {/* Modal de Confirmação */}
+      <Modal 
+        title={confirmModal.title} 
+        open={confirmModal.open} 
+        onClose={() => setConfirmModal({ ...confirmModal, open: false })}
+      >
+        <div className="flex items-start gap-4">
+            <div className="mt-1 p-2 rounded-full flex-shrink-0 bg-orange-100 text-orange-600">
+                <AlertCircle size={24} />
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{confirmModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+            <button 
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })}
+                className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={confirmModal.onConfirm}
+                className="px-6 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20 transition-colors"
+            >
+                Confirmar Ação
+            </button>
+        </div>
+      </Modal>
     </div>
   );
 }

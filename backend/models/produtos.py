@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, func, select, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, func, select, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from database import Base
@@ -58,7 +58,7 @@ class Produto(Base):
     movimentacoes = relationship("MovimentacaoEstoque", back_populates="produto")
     reservas = relationship("ReservaEstoque", back_populates="produto")
     componentes_maquina = relationship("MaquinaComponente", back_populates="produto")
-
+    itens_kit = relationship("ProdutoKitItem", foreign_keys="ProdutoKitItem.kit_id", back_populates="kit", cascade="all, delete-orphan")
     @hybrid_property
     def estoque_atual(self):
         entradas = sum(m.quantidade for m in self.movimentacoes if m.tipo in TIPOS_ENTRADA)
@@ -95,3 +95,15 @@ class EtiquetaTemplate(Base):
     altura_mm = Column(Float, default=50.0)
     padrao = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class ProdutoKitItem(Base):
+    __tablename__ = "produtos_kit_itens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    kit_id = Column(Integer, ForeignKey("produtos.id"), nullable=False, index=True)
+    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False, index=True)
+    quantidade = Column(Float, nullable=False, default=1.0)
+    
+    # Relationships
+    kit = relationship("Produto", foreign_keys=[kit_id], back_populates="itens_kit")
+    produto = relationship("Produto", foreign_keys=[produto_id])

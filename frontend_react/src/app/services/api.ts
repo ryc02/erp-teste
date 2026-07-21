@@ -1,5 +1,4 @@
-// Centralized HTTP client — injects JWT, handles 401 globally
-const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "/api/v1" : "http://localhost:8000/api/v1");
+export const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "/api/v1" : "http://localhost:8000/api/v1");
 
 export const TOKEN_KEY = "venner_jwt";
 
@@ -26,10 +25,13 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
+  const empresaId = localStorage.getItem("empresa_ativa");
+  
   const headers: Record<string, string> = {
     ...(init.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (empresaId) headers["X-Empresa-Id"] = empresaId;
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
 

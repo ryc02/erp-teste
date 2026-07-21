@@ -13,6 +13,7 @@ import {
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { Badge, Input, Select, Textarea, FormSection, Modal, TableToolbar, Pagination, fmt, fmtFull } from "../components/ui/SharedUI";
 import { api } from "../services/api";
+import { useLocalData } from "../hooks/useLocalData";
 
 export function Financeiro() {
   const [tab, setTab] = useState<"lancamentos" | "pagar" | "receber" | "caixa" | "dre">("lancamentos");
@@ -56,6 +57,9 @@ export function Financeiro() {
   const contasPagar = contas.filter(c => c.tipo === "PAGAR");
   const contasReceber = contas.filter(c => c.tipo === "RECEBER");
   
+  const currentList = tab === "pagar" ? contasPagar : tab === "receber" ? contasReceber : contas;
+  const { page, setPage, totalPages, paginatedData } = useLocalData(currentList, 10);
+
   const openBaixaModal = (c: any) => {
     setFormBaixa({ data_pagamento: new Date().toISOString().split('T')[0], valor_pago: c.valor });
     setModalBaixa({ open: true, contaId: c.id, tipo: c.tipo, valorOriginal: c.valor });
@@ -167,7 +171,7 @@ export function Financeiro() {
                   <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Data</th>
                 </tr></thead>
                 <tbody className="divide-y divide-border">
-                  {contas.map((t) => (
+                  {paginatedData.map((t: any) => (
                     <tr key={t.id} className="hover:bg-muted/30">
                       <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground">#{t.id}</td>
                       <td className="px-4 py-3.5 text-xs font-medium">{t.descricao}</td>
@@ -180,6 +184,7 @@ export function Financeiro() {
                 </tbody>
               </table>
             </div>
+            <Pagination total={contas.length} shown={paginatedData.length} page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
 
@@ -201,7 +206,7 @@ export function Financeiro() {
                   <th className="px-4 py-3"></th>
                 </tr></thead>
                 <tbody className="divide-y divide-border">
-                  {contasPagar.map((c) => {
+                  {paginatedData.map((c: any) => {
                     const cfg = cpPagarStatus[c.status as keyof typeof cpPagarStatus] || { label: c.status, variant: "default" };
                     return (
                       <tr key={c.id} className="hover:bg-muted/30">
@@ -219,6 +224,7 @@ export function Financeiro() {
                 </tbody>
               </table>
             </div>
+            <Pagination total={contasPagar.length} shown={paginatedData.length} page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
 
@@ -239,7 +245,7 @@ export function Financeiro() {
                   <th className="px-4 py-3"></th>
                 </tr></thead>
                 <tbody className="divide-y divide-border">
-                  {contasReceber.map((c) => {
+                  {paginatedData.map((c: any) => {
                     const cfg = crStatus[c.status as keyof typeof crStatus] || { label: c.status, variant: "default" };
                     return (
                       <tr key={c.id} className="hover:bg-muted/30">
@@ -261,6 +267,7 @@ export function Financeiro() {
                 </tbody>
               </table>
             </div>
+            <Pagination total={contasReceber.length} shown={paginatedData.length} page={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
 
@@ -332,69 +339,6 @@ export function Financeiro() {
   );
 }
 
-// NF-e placeholder
-export function NotasFiscais() {
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: "NF-e emitidas (mês)", value: "312", color: "" },
-          { label: "Autorizadas", value: "308", color: "text-emerald-600" },
-          { label: "Rejeitadas", value: "4", color: "text-red-600" },
-          { label: "Canceladas", value: "2", color: "text-amber-600" },
-        ].map((s) => (
-          <div key={s.label} className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <TableToolbar title="Notas Fiscais Eletrônicas" subtitle="NF-e e NFC-e emitidas">
-          <button className="flex items-center gap-1.5 text-xs px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"><Plus size={13} /> Emitir NF-e</button>
-        </TableToolbar>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead><tr className="text-xs text-muted-foreground bg-muted/40">
-              <th className="text-left px-5 py-3 font-medium">Número</th>
-              <th className="text-left px-4 py-3 font-medium">Chave de acesso</th>
-              <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Destinatário</th>
-              <th className="text-left px-4 py-3 font-medium hidden md:table-cell">CFOP</th>
-              <th className="text-right px-4 py-3 font-medium">Valor</th>
-              <th className="text-left px-4 py-3 font-medium">Status</th>
-              <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Emissão</th>
-              <th className="px-4 py-3"></th>
-            </tr></thead>
-            <tbody className="divide-y divide-border">
-              {[
-                { num: "000.312", chave: "43260712345678000199550010003120011234567890", dest: "Mariana Oliveira", cfop: "5.102", valor: 189.90, status: "autorizada", data: "13/07/2026" },
-                { num: "000.311", chave: "43260712345678000199550010003110021234567891", dest: "Carlos Mendes", cfop: "5.102", valor: 1249.00, status: "autorizada", data: "13/07/2026" },
-                { num: "000.310", chave: "43260712345678000199550010003100031234567892", dest: "Fernanda Costa", cfop: "6.102", valor: 2890.00, status: "autorizada", data: "12/07/2026" },
-                { num: "000.309", chave: "43260712345678000199550010003090041234567893", dest: "Global Atacado S.A.", cfop: "5.102", valor: 8440.00, status: "cancelada", data: "11/07/2026" },
-                { num: "000.308", chave: "43260712345678000199550010003080051234567894", dest: "Bruno Alves", cfop: "5.102", valor: 219.90, status: "autorizada", data: "11/07/2026" },
-              ].map((n) => (
-                <tr key={n.num} className="hover:bg-muted/30">
-                  <td className="px-5 py-3.5 text-xs font-mono font-medium">{n.num}</td>
-                  <td className="px-4 py-3.5 text-xs font-mono text-muted-foreground max-w-[140px] truncate hidden lg:table-cell">{n.chave.substring(0, 20)}...</td>
-                  <td className="px-4 py-3.5 text-xs font-medium hidden md:table-cell">{n.dest}</td>
-                  <td className="px-4 py-3.5 text-xs text-muted-foreground hidden md:table-cell">{n.cfop}</td>
-                  <td className="px-4 py-3.5 text-xs font-semibold text-right">{fmtFull(n.valor)}</td>
-                  <td className="px-4 py-3.5"><Badge variant={n.status === "autorizada" ? "success" : n.status === "cancelada" ? "danger" : "warning"}>{n.status.charAt(0).toUpperCase() + n.status.slice(1)}</Badge></td>
-                  <td className="px-4 py-3.5 text-xs text-muted-foreground hidden md:table-cell">{n.data}</td>
-                  <td className="px-4 py-3.5 flex items-center gap-1">
-                    <button className="p-1 rounded hover:bg-muted text-muted-foreground"><Download size={12} /></button>
-                    <button className="p-1 rounded hover:bg-muted text-muted-foreground"><Printer size={12} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <Pagination total={312} shown={5} />
-      </div>
-    </div>
-  );
-}
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 

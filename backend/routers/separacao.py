@@ -48,9 +48,9 @@ def get_pedido_separacao(
         itens_res.append({
             "id": i.id,
             "produto_id": i.produto_id,
-            "sku": prod.codigo_sku if prod else "",
+            "sku": prod.sku if prod else "",
             "nome": prod.descricao if prod else "Desconhecido",
-            "gtin": prod.codigo_barras if prod else "", # Assuming codigo_barras exists
+            "gtin": prod.gtin if prod else "",
             "quantidade": i.quantidade,
             "quantidade_separada": 0 # This would ideally be in DB if saving partial state
         })

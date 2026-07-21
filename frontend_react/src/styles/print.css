@@ -3,11 +3,12 @@
     visibility: hidden;
   }
   
-  #printable-area, #printable-area * {
+  #printable-area, #printable-area *,
+  #printable-production-area, #printable-production-area * {
     visibility: visible;
   }
   
-  #printable-area {
+  #printable-area, #printable-production-area {
     position: absolute;
     left: 0;
     top: 0;

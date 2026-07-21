@@ -21,6 +21,7 @@ class ContaBancaria(Base):
     agencia = Column(String)
     conta = Column(String)
     saldo_inicial = Column(Float, default=0.0)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
     # the real balance will be computed via aggregations
 
 class FechamentoFinanceiro(Base):
@@ -30,6 +31,7 @@ class FechamentoFinanceiro(Base):
     data_fechamento = Column(DateTime(timezone=True), nullable=False)
     data_registro = Column(DateTime(timezone=True), server_default=func.now())
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
     
     usuario = relationship("User")
 
@@ -44,6 +46,7 @@ class ContaFinanceira(Base):
     __tablename__ = "contas_financeiras"
     
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True)
     tipo = Column(String, index=True) # RECEBER, PAGAR
     status = Column(String, default="PENDENTE", index=True) # PENDENTE, PAGO, CANCELADO, ATRASADO
     descricao = Column(String, nullable=False)

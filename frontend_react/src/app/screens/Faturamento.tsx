@@ -11,6 +11,7 @@ export function Faturamento() {
   const [faturamentoModal, setFaturamentoModal] = useState(false);
   const [notaRascunho, setNotaRascunho] = useState<any>(null);
   const [loadingModal, setLoadingModal] = useState(false);
+  const [successState, setSuccessState] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -30,6 +31,7 @@ export function Faturamento() {
 
   const handlePrepararFaturamento = async (id: number) => {
     try {
+      setSuccessState(false);
       setLoadingModal(true);
       setFaturamentoModal(true);
       const res = await api.get(`/fiscal/preparar-faturamento/${id}`);
@@ -46,9 +48,12 @@ export function Faturamento() {
     if (!notaRascunho) return;
     try {
       await api.post("/fiscal/emitir", notaRascunho);
-      alert("Nota Fiscal emitida e salva com sucesso!");
-      setFaturamentoModal(false);
-      loadData();
+      setSuccessState(true);
+      setTimeout(() => {
+        setSuccessState(false);
+        setFaturamentoModal(false);
+        loadData();
+      }, 2500);
     } catch (err) {
       alert("Erro ao emitir a nota fiscal.");
     }
@@ -197,10 +202,22 @@ export function Faturamento() {
       </div>
 
       {/* Modal Faturamento Nativo */}
-      <Modal title="Preparação de Faturamento" open={faturamentoModal} onClose={() => setFaturamentoModal(false)}>
+      <Modal title={successState ? "" : "Preparação de Faturamento"} open={faturamentoModal} onClose={() => { setFaturamentoModal(false); setSuccessState(false); }}>
         <div className="space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
-          {loadingModal ? (
-            <div className="p-10 text-center text-muted-foreground">Processando inteligência fiscal...</div>
+          {successState ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center animate-in zoom-in fade-in duration-300">
+                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-5 shadow-sm">
+                    <Check size={40} className="animate-in slide-in-from-bottom-2" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Nota Emitida!</h3>
+                <p className="text-sm text-muted-foreground">A Nota Fiscal foi gerada com sucesso e o pedido foi marcado como Faturado.</p>
+            </div>
+          ) : loadingModal ? (
+            <div className="p-16 flex flex-col items-center justify-center text-center">
+                <RefreshCw size={24} className="text-emerald-500 animate-spin mb-4" />
+                <p className="text-sm font-medium text-foreground">Processando inteligência fiscal...</p>
+                <p className="text-xs text-muted-foreground mt-1">Analisando impostos e NCMs do pedido</p>
+            </div>
           ) : notaRascunho ? (
             <>
               <div className="bg-muted/30 p-3 rounded-lg border border-border flex justify-between items-center">

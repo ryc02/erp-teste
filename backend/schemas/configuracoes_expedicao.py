@@ -3,6 +3,7 @@ from typing import Optional
 
 class ConfiguracoesExpedicaoBase(BaseModel):
     formato_etiqueta: str = "PDF_A4"
+    template_etiqueta: Optional[str] = None
     imprimir_dce: bool = True
     remetente_nome: Optional[str] = None
     remetente_documento: Optional[str] = None

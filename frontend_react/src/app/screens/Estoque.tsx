@@ -23,6 +23,8 @@ export function Estoque() {
   });
   const [saving, setSaving] = useState(false);
 
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+
   async function loadData() {
     try {
       setLoading(true);
@@ -42,7 +44,7 @@ export function Estoque() {
   async function handleMovimentacao(e: React.FormEvent) {
     e.preventDefault();
     if (!movForm.produto_id) {
-      alert("Selecione um produto.");
+      setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione um produto." });
       return;
     }
     setSaving(true);
@@ -52,14 +54,15 @@ export function Estoque() {
         tipo: movForm.tipo,
         quantidade: movForm.quantidade,
         observacao: movForm.observacao,
-        usuario: user?.nome || user?.username || "Sistema",
+        usuario: user?.nome_completo || user?.username || "Sistema",
         origem: "Ajuste Manual"
       });
       setModal(false);
       setMovForm({ produto_id: "", tipo: "ENTRADA", quantidade: 1, observacao: "" });
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Movimentação registrada com sucesso!" });
       loadData();
     } catch (err: any) {
-      alert(err?.message || "Erro ao registrar movimentação");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao registrar movimentação" });
     } finally {
       setSaving(false);
     }
@@ -202,8 +205,8 @@ export function Estoque() {
                           {s.categoria && <div className="text-[10px] text-muted-foreground mt-0.5">{s.categoria}</div>}
                         </td>
                         <td className="px-4 py-3 hidden lg:table-cell">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${s.tipo_produto === "FABRICADO" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>
-                            {s.tipo_produto === "FABRICADO" ? "Fabricado" : "Comprado"}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${s.tipo_produto === "Fabricado" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>
+                            {s.tipo_produto === "Variacao" ? "Com variações" : s.tipo_produto === "Materia-Prima" ? "Matéria-prima" : s.tipo_produto === "COMPRADO" ? "Simples" : s.tipo_produto === "FABRICADO" ? "Fabricado" : s.tipo_produto || "Simples"}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 text-xs font-semibold text-right">
@@ -236,6 +239,26 @@ export function Estoque() {
           <Pagination total={filtered.length} shown={paginated.length} page={page} totalPages={totalPages} onPageChange={setPage} />
         )}
       </div>
+
+      {/* Modal de Feedback */}
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
     </div>
   );
 }

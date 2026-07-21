@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Building2, Users, Package, ShoppingCart, Warehouse, FileText, DollarSign, Shield, Bell, HardDrive, Save, Check } from "lucide-react";
 import { Input, Select, FormSection, Badge, Textarea } from "../components/ui/SharedUI";
+import { EtiquetaVisualEditor } from "../components/ui/EtiquetaVisualEditor";
 import { useAuth } from "../hooks/useAuth";
 import { api } from "../services/api";
 
@@ -10,6 +11,7 @@ const tabs = [
   { id: "cadastros", label: "Cadastros", icon: Package },
   { id: "vendas", label: "Vendas / Pedidos", icon: ShoppingCart },
   { id: "estoque", label: "Estoque", icon: Warehouse },
+  { id: "expedicao", label: "Expedição e Logística", icon: Package },
   { id: "fiscal", label: "Fiscal", icon: FileText },
   { id: "financeiro", label: "Financeiro", icon: DollarSign },
   { id: "seguranca", label: "Segurança e Acesso", icon: Shield },
@@ -22,24 +24,50 @@ export function Configuracoes() {
   const { can } = useAuth();
   
   const [configVendas, setConfigVendas] = useState<any>(null);
+  const [configExpedicao, setConfigExpedicao] = useState<any>(null);
+  const [templateEtiqueta, setTemplateEtiqueta] = useState<any>(null);
 
   useEffect(() => {
     if (activeTab === "vendas") {
       api.get("/configuracoes/vendas").then(setConfigVendas).catch(console.error);
     }
+    if (activeTab === "expedicao") {
+      api.get("/configuracoes-expedicao").then(setConfigExpedicao).catch(console.error);
+    }
+    if (activeTab === "cadastros") {
+      api.get("/configuracoes/etiquetas").then((res: any) => {
+        if (res && res.length > 0) {
+          const padrao = res.find((t: any) => t.padrao) || res[0];
+          setTemplateEtiqueta(padrao);
+        } else {
+          setTemplateEtiqueta({ nome: "Padrão", zpl_base: "^XA\n^FO50,50^A0N,30,30^FD{{nome}}^FS\n^FO50,90^A0N,20,20^FDSKU: {{sku}}^FS\n^XZ", padrao: true });
+        }
+      }).catch(console.error);
+    }
   }, [activeTab]);
 
   const handleSave = async () => {
-    if (activeTab === "vendas" && configVendas) {
-      try {
+    try {
+      if (activeTab === "vendas" && configVendas) {
         await api.put("/configuracoes/vendas", configVendas);
-        alert("Configurações salvas com sucesso!");
-      } catch (e) {
-        console.error(e);
-        alert("Erro ao salvar configurações.");
+        alert("Configurações de vendas salvas com sucesso!");
+      } else if (activeTab === "expedicao" && configExpedicao) {
+        await api.put("/configuracoes-expedicao", configExpedicao);
+        alert("Configurações de expedição salvas com sucesso!");
+      } else if (activeTab === "cadastros" && templateEtiqueta) {
+        const templateToSave = { ...templateEtiqueta, padrao: true };
+        if (templateEtiqueta.id) {
+          await api.put(`/configuracoes/etiquetas/${templateEtiqueta.id}`, templateToSave);
+        } else {
+          await api.post("/configuracoes/etiquetas", templateToSave);
+        }
+        alert("Template de etiqueta salvo com sucesso!");
+      } else {
+        alert("Esta aba ainda usa valores de demonstração.");
       }
-    } else {
-      alert("Esta aba ainda usa valores de demonstração.");
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao salvar configurações.");
     }
   };
 
@@ -167,6 +195,16 @@ export function Configuracoes() {
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" defaultChecked className="accent-primary" /> Bloquear CPF/CNPJ duplicado no banco de dados</label>
                   </div>
+                </FormSection>
+                <FormSection title="Template de Etiqueta ZPL (Produtos)">
+                  {templateEtiqueta ? (
+                    <EtiquetaVisualEditor 
+                      template={templateEtiqueta} 
+                      onChange={setTemplateEtiqueta} 
+                    />
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Carregando template...</div>
+                  )}
                 </FormSection>
               </div>
             )}
@@ -303,6 +341,27 @@ export function Configuracoes() {
                   </div>
                   <label className="flex items-center gap-2 text-sm mt-4"><input type="checkbox" defaultChecked className="accent-primary" /> Enviar notificação ao gerente de compras quando estoque atingir o mínimo</label>
                 </FormSection>
+              </div>
+            )}
+
+            {activeTab === "expedicao" && (
+              <div className="space-y-6">
+                {configExpedicao ? (
+                  <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-xl bg-muted/5">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
+                      <Package size={24} className="text-muted-foreground" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground mb-1">Configurações de Expedição</h3>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Não há configurações de expedição disponíveis no momento. As configurações de etiquetas foram desativadas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
+                    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
+                    Carregando configurações de expedição...
+                  </div>
+                )}
               </div>
             )}
 

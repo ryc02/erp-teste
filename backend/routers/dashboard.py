@@ -282,7 +282,8 @@ def get_recent_movements(
 def get_dashboard_home(db: Session = Depends(get_db)):
     """Retorna os dados exatos necessários para o frontend Dashboard.tsx."""
     from models.financeiro import ContaFinanceira
-    from models.vendas import PedidoVenda
+    from models.vendas import PedidoVenda, PedidoVendaItem
+    from models.produtos import Produto
     from comercial.models.cliente import ClienteComercial
     from dateutil.relativedelta import relativedelta
     import calendar
@@ -313,11 +314,23 @@ def get_dashboard_home(db: Session = Depends(get_db)):
         ClienteComercial.created_at >= inicio_mes
     ).count()
     
+    custos_mes = db.query(func.sum(PedidoVendaItem.quantidade * Produto.custo)).join(
+        PedidoVenda, PedidoVendaItem.pedido_id == PedidoVenda.id
+    ).join(
+        Produto, PedidoVendaItem.produto_id == Produto.id
+    ).filter(
+        PedidoVenda.data_pedido >= inicio_mes
+    ).scalar() or 0.0
+
+    lucro_bruto = vendas_mes_total - custos_mes
+    lucro_liquido = lucro_bruto - (vendas_mes_total * 0.10) # 10% provisão impostos
+    margem_lucro = (lucro_liquido / vendas_mes_total * 100) if vendas_mes_total > 0 else 0.0
+    
     kpis = {
         "receita_mes": {"value": f"R$ {receita_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), "change": "+0.0%", "pos": True},
         "pedidos_hoje": {"value": str(pedidos_hoje), "change": "+0.0%", "pos": True},
         "ticket_medio": {"value": f"R$ {ticket_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), "change": "+0.0%", "pos": True},
-        "clientes_novos": {"value": str(clientes_novos), "change": "+0.0%", "pos": True}
+        "margem_lucro": {"value": f"{margem_lucro:.1f}%", "change": "+0.0%", "pos": True}
     }
     
     # Revenue Data (últimos 7 meses)
@@ -361,14 +374,36 @@ def get_dashboard_home(db: Session = Depends(get_db)):
         qtd = db.query(PedidoVenda).filter(func.date(PedidoVenda.data_pedido) == dia).count()
         daily_orders_data.append({"dia": dias_str[dia.weekday()], "pedidos": qtd})
         
+    # Curva ABC (Top 5 Produtos Mês)
+    top_produtos = db.query(
+        Produto.nome,
+        func.sum(PedidoVendaItem.quantidade * PedidoVendaItem.preco_unitario).label('total_vendas')
+    ).join(
+        PedidoVendaItem, PedidoVendaItem.produto_id == Produto.id
+    ).join(
+        PedidoVenda, PedidoVendaItem.pedido_id == PedidoVenda.id
+    ).filter(
+        PedidoVenda.data_pedido >= inicio_mes
+    ).group_by(
+        Produto.nome
+    ).order_by(
+        func.sum(PedidoVendaItem.quantidade * PedidoVendaItem.preco_unitario).desc()
+    ).limit(5).all()
+
+    # Cores fixas para gráfico de pizza/rosca
+    cores = ["#F05A28", "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B"]
+    curva_abc_data = []
+    for i, p in enumerate(top_produtos):
+        curva_abc_data.append({
+            "name": p[0],
+            "value": float(p[1]),
+            "color": cores[i % len(cores)]
+        })
+        
     return {
         "kpis": kpis,
         "revenueData": revenue_data,
         "ordersData": orders_data,
         "dailyOrdersData": daily_orders_data,
-        "channelData": [
-            {"name": "E-commerce", "value": 45, "color": "#F05A28"},
-            {"name": "Vendas Internas", "value": 35, "color": "#3B82F6"},
-            {"name": "Representantes", "value": 20, "color": "#10B981"}
-        ]
+        "curvaAbcData": curva_abc_data
     }

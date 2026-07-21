@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api";
-import { Badge, Input, Select } from "../components/ui/SharedUI";
+import { Badge, Input, Select, Modal } from "../components/ui/SharedUI";
 import { RefreshCw, LayoutGrid, Save, UserPlus, CheckCircle, Trash2 } from "lucide-react";
 
 export function Produtividade() {
@@ -28,6 +28,9 @@ export function Produtividade() {
   const [aOcorrencia, setAOcorrencia] = useState("PRODUCAO");
   const [aObs, setAObs] = useState("");
 
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+
   async function loadData() {
     try {
       // Filtrar apontamentos por periodo seria ideal, mas para simplificar aqui vamos buscar tudo ou ajustar conforme a API.
@@ -53,7 +56,8 @@ export function Produtividade() {
     try {
       await api.post("/produtividade/setores", { nome: sNome, meta_diaria: parseFloat(sMetaDiaria), meta_colaborador_diaria: parseFloat(sMetaColab)||0 });
       setSNome(""); setSMetaDiaria(""); setSMetaColab(""); loadData();
-    } catch(err:any) { alert(err.message); }
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Setor salvo com sucesso!" });
+    } catch(err:any) { setFeedbackModal({ open: true, type: "error", title: "Erro", message: err.message || "Erro ao salvar setor" }); }
   }
 
   async function saveColaborador(e: React.FormEvent) {
@@ -61,7 +65,8 @@ export function Produtividade() {
     try {
       await api.post("/produtividade/colaboradores", { nome: cNome, setor_id: parseInt(cSetorId) });
       setCNome(""); loadData();
-    } catch(err:any) { alert(err.message); }
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Colaborador salvo com sucesso!" });
+    } catch(err:any) { setFeedbackModal({ open: true, type: "error", title: "Erro", message: err.message || "Erro ao salvar colaborador" }); }
   }
 
   async function saveApontamento(e: React.FormEvent) {
@@ -76,12 +81,26 @@ export function Produtividade() {
         observacao: aObs
       });
       setAQtd(""); setAObs(""); loadData();
-    } catch(err:any) { alert(err.message); }
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Apontamento registrado!" });
+    } catch(err:any) { setFeedbackModal({ open: true, type: "error", title: "Erro", message: err.message || "Erro ao salvar apontamento" }); }
   }
 
   async function deleteApontamento(id: number) {
-    if(!confirm("Excluir apontamento?")) return;
-    try { await api.delete(`/produtividade/apontamentos/${id}`); loadData(); } catch(err:any) { alert(err.message); }
+    setConfirmModal({
+        open: true,
+        title: "Excluir Apontamento",
+        message: "Tem certeza que deseja excluir este apontamento?",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try { 
+                await api.delete(`/produtividade/apontamentos/${id}`); 
+                loadData(); 
+                setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Apontamento excluído." });
+            } catch(err:any) { 
+                setFeedbackModal({ open: true, type: "error", title: "Erro", message: err.message || "Erro ao excluir" }); 
+            }
+        }
+    });
   }
 
   // Filter cols by sector
@@ -295,6 +314,51 @@ export function Produtividade() {
         </div>
       </div>
 
+      {/* Modal de Feedback */}
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
+
+      {/* Modal de Confirmação */}
+      <Modal title={confirmModal.title} open={confirmModal.open} onClose={() => setConfirmModal({ ...confirmModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className="mt-1 p-2 rounded-full flex-shrink-0 bg-orange-100 text-orange-600">
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">!</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{confirmModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+            <button 
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })}
+                className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={confirmModal.onConfirm}
+                className="px-6 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20 transition-colors"
+            >
+                Confirmar
+            </button>
+        </div>
+      </Modal>
     </div>
   );
 }

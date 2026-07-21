@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class ProdutoBase(BaseModel):
     nome: str
@@ -42,8 +42,20 @@ class ProdutoBase(BaseModel):
     motivo_isencao_anvisa: Optional[str] = None
     ex_tipi: Optional[str] = None
 
+class ProdutoKitItemCreate(BaseModel):
+    produto_id: int
+    quantidade: float
+
+class ProdutoKitItemSchema(BaseModel):
+    id: int
+    kit_id: int
+    produto_id: int
+    quantidade: float
+    model_config = ConfigDict(from_attributes=True)
+
 class ProdutoCreate(ProdutoBase):
     sku: Optional[str] = None
+    itens_kit: Optional[List[ProdutoKitItemCreate]] = []
 
 class ProdutoUpdate(ProdutoBase):
     nome: Optional[str] = None
@@ -76,12 +88,14 @@ class ProdutoUpdate(ProdutoBase):
     codigo_anvisa: Optional[str] = None
     motivo_isencao_anvisa: Optional[str] = None
     ex_tipi: Optional[str] = None
+    itens_kit: Optional[List[ProdutoKitItemCreate]] = None
 
 class ProdutoSchema(ProdutoBase):
     id: int
     estoque_atual: float
     ativo: bool
     created_at: datetime
+    itens_kit: Optional[List[ProdutoKitItemSchema]] = []
     model_config = ConfigDict(from_attributes=True)
 
 

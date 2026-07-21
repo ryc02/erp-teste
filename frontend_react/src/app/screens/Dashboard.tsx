@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { 
+import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, DollarSign,
   Users, BarChart3, Settings, Bell, Search, ChevronDown,
   TrendingUp, ArrowUpRight, ArrowDownRight, MoreHorizontal,
@@ -42,7 +42,7 @@ export function Dashboard() {
           { label: "Receita do mês", value: data.kpis.receita_mes.value, change: data.kpis.receita_mes.change, pos: data.kpis.receita_mes.pos, icon: DollarSign },
           { label: "Pedidos hoje", value: data.kpis.pedidos_hoje.value, change: data.kpis.pedidos_hoje.change, pos: data.kpis.pedidos_hoje.pos, icon: ShoppingCart },
           { label: "Ticket médio", value: data.kpis.ticket_medio.value, change: data.kpis.ticket_medio.change, pos: data.kpis.ticket_medio.pos, icon: CreditCard },
-          { label: "Clientes novos", value: data.kpis.clientes_novos.value, change: data.kpis.clientes_novos.change, pos: data.kpis.clientes_novos.pos, icon: Users },
+          { label: "Margem de Lucro", value: data.kpis.margem_lucro.value, change: data.kpis.margem_lucro.change, pos: data.kpis.margem_lucro.pos, icon: TrendingUp },
         ].map((k) => (
           <div key={k.label} className="bg-card rounded-xl p-5 border border-border hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-3">
@@ -77,17 +77,17 @@ export function Dashboard() {
           </ResponsiveContainer>
         </div>
         <div className="bg-card rounded-xl p-5 border border-border">
-          <p className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Canais de venda</p>
-          <p className="text-xs text-muted-foreground mb-3">Participação julho</p>
+          <p className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Curva ABC</p>
+          <p className="text-xs text-muted-foreground mb-3">Top 5 Produtos Mês</p>
           <ResponsiveContainer width="100%" height={130}>
-            <PieChart><Pie data={data.channelData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value">{data.channelData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}</Pie>
-              <Tooltip formatter={(v: number) => [`${v}%`, ""]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid rgba(26,31,54,0.1)" }} />
+            <PieChart><Pie data={data.curvaAbcData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value">{data.curvaAbcData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}</Pie>
+              <Tooltip formatter={(v: number) => [fmt(v), ""]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid rgba(26,31,54,0.1)" }} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="space-y-1.5 mt-1">{data.channelData.map((c: any) => (
+          <div className="space-y-1.5 mt-1">{data.curvaAbcData.map((c: any) => (
             <div key={c.name} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c.color }} /><span className="text-muted-foreground">{c.name}</span></div>
-              <span className="font-medium">{c.value}%</span>
+              <div className="flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: c.color }} /><span className="text-muted-foreground truncate">{c.name}</span></div>
+              <span className="font-medium flex-shrink-0 ml-2">{fmt(c.value)}</span>
             </div>
           ))}</div>
         </div>

@@ -6,6 +6,7 @@ import {
 import { Badge, FormSection, TableToolbar, fmtFull, Modal, Input } from "../components/ui/SharedUI";
 import { useAuth } from "../hooks/useAuth";
 import { PrintableProposal } from "../components/ui/PrintableProposal";
+import { PrintableProductionOrder } from "../components/ui/PrintableProductionOrder";
 import { toast } from "sonner";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -282,12 +283,42 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
     navigator.clipboard.writeText(url).then(() => alert(`Link copiado: ${url}`));
   }
 
+  const [printProductionData, setPrintProductionData] = useState<any>(null);
+
   function handleImprimir() {
     if (!pedidoId) return;
     api.get<any>(`/vendas/pedidos/${pedidoId}`).then(res => {
       setPrintData(res);
       setTimeout(() => window.print(), 300);
     }).catch(() => window.print());
+  }
+
+  function handleImprimirProducao(customId?: any) {
+    const idToUse = customId || pedidoId;
+    if (!idToUse) return;
+    api.get<any>(`/vendas/pedidos/${idToUse}`).then(res => {
+      setPrintProductionData(res);
+      setTimeout(() => window.print(), 300);
+    }).catch(err => {
+      toast.error("Erro ao carregar dados para impressão da produção");
+    });
+  }
+
+  async function handleGerarOP(customPedido?: any) {
+    const p = customPedido || (pedidoId ? { id: pedidoId, itens: itens } : null);
+    if (!p) return;
+    try {
+      const prodId = p.itens && p.itens.length > 0 ? (p.itens[0].produto_id || p.itens[0].id) : 1;
+      const qty = p.itens && p.itens.length > 0 ? (p.itens[0].quantidade || p.itens[0].qty || 1) : 1;
+      await api.post("/pcp/ordens", {
+        produto_id: prodId,
+        quantidade_planejada: qty,
+        observacoes: `OP gerada automaticamente via Pedido #${p.id}`
+      });
+      toast.success(`Ordem de Produção gerada com sucesso para o Pedido #${p.id}!`);
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao gerar Ordem de Produção no PCP");
+    }
   }
 
   async function handleSave(aprovar: boolean) {
@@ -429,13 +460,13 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
                     <button onClick={() => { setShowMaisAcoes(false); handleImprimir(); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Imprimir</button>
                     <button onClick={() => { setShowMaisAcoes(false); handleImprimir(); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Salvar em PDF</button>
                     <button onClick={() => { setShowMaisAcoes(false); alert("Funcionalidade em breve."); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Imprimir carnet</button>
-                    <button onClick={() => { setShowMaisAcoes(false); alert("Funcionalidade em breve."); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Imprimir pedido para produção</button>
+                    <button onClick={() => { setShowMaisAcoes(false); handleImprimirProducao(); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors font-medium text-amber-600">Imprimir pedido para produção (PCP)</button>
                     <div className="border-t border-border my-1" />
                     <div className="px-3 py-1.5 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">Operações</div>
                     <button onClick={() => { setShowMaisAcoes(false); handleClonar(); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Clonar venda</button>
                     <button onClick={() => { setShowMaisAcoes(false); alert("Funcionalidade em breve."); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Devolver produtos</button>
                     <button onClick={() => { setShowMaisAcoes(false); setShowAlterarStatus(true); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Alterar situação</button>
-                    <button onClick={() => { setShowMaisAcoes(false); alert("Funcionalidade em breve."); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Gerar ordem de produção</button>
+                    <button onClick={() => { setShowMaisAcoes(false); handleGerarOP(); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors font-medium text-blue-600">Gerar ordem de produção (OP)</button>
                     <button onClick={() => { setShowMaisAcoes(false); alert("Funcionalidade em breve."); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors">Cotar fretes</button>
                     <div className="border-t border-border my-1" />
                     <button onClick={() => { setShowMaisAcoes(false); handleExcluir(); }} className="w-full text-left px-4 py-2 hover:bg-muted transition-colors text-red-500 font-semibold">Excluir venda</button>
@@ -1128,6 +1159,7 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
 
       </div>
       <PrintableProposal data={printData} />
+      <PrintableProductionOrder data={printProductionData} />
     </div>
   );
 }
@@ -1136,6 +1168,7 @@ export function NovoPedidoForm({ onCancel, onSave, pedidoId }: { onCancel: () =>
 export function Pedidos() {
 
   const [printData, setPrintData] = useState<any>(null);
+  const [printProductionData, setPrintProductionData] = useState<any>(null);
   
   async function handlePrint(id: number, e: React.MouseEvent) {
     e.stopPropagation();
@@ -1520,6 +1553,7 @@ export function Pedidos() {
       </div>
 
       <PrintableProposal data={printData} />
+      <PrintableProductionOrder data={printProductionData} />
 
       <Modal title="Filtros Avançados" open={showFilterModal} onClose={() => setShowFilterModal(false)}>
         <div className="space-y-4">

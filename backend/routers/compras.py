@@ -99,8 +99,28 @@ def aprovar_ordem_compra(
         raise HTTPException(status_code=400, detail=f"Apenas OCs em RASCUNHO podem ser aprovadas. Status atual: {oc.status}")
         
     oc.status = compras_schemas.StatusOrdemCompra.AGUARDANDO_RECEBIMENTO.value
-    db.commit()
-    return {"status": "success", "message": f"Ordem de Compra #{oc.id} aprovada (Aguardando Recebimento)."}
+    
+    # Cria a Conta a Pagar preventivamente na Aprovação
+    try:
+        from dateutil.relativedelta import relativedelta
+        from models import ContaFinanceira
+        from datetime import datetime
+        
+        nova_conta = ContaFinanceira(
+            tipo="PAGAR",
+            status="PENDENTE",
+            descricao=f"Ref. Ordem de Compra #{oc.id} - {oc.fornecedor_nome}",
+            valor=oc.valor_total,
+            data_vencimento=datetime.utcnow() + relativedelta(days=30),
+            observacoes=f"Gerada automaticamente pela aprovação da OC #{oc.id}."
+        )
+        db.add(nova_conta)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar Conta a Pagar: {str(e)}")
+        
+    return {"status": "success", "message": f"Ordem de Compra #{oc.id} aprovada (Conta a Pagar gerada e Aguardando Recebimento)."}
 
 @router.post("/ordens/{ordem_id}/receber")
 def receber_ordem_compra(
@@ -131,21 +151,10 @@ def receber_ordem_compra(
             )
             EstoqueService.registrar_movimentacao(db, mov)
             
-        # Cria a Conta a Pagar (com vencimento para 30 dias)
-        nova_conta = ContaFinanceira(
-            tipo="PAGAR",
-            status="PENDENTE",
-            descricao=f"Ref. Ordem de Compra #{oc.id} - {oc.fornecedor_nome}",
-            valor=oc.valor_total,
-            data_vencimento=datetime.utcnow() + relativedelta(days=30),
-            observacoes=f"Gerada automaticamente pelo recebimento da OC #{oc.id}."
-        )
-        db.add(nova_conta)
-            
         oc.status = compras_schemas.StatusOrdemCompra.RECEBIDO.value
         oc.data_recebimento = datetime.utcnow()
         db.commit()
-        return {"status": "success", "message": f"Ordem de Compra #{oc.id} recebida com sucesso. Estoque e Financeiro atualizados."}
+        return {"status": "success", "message": f"Ordem de Compra #{oc.id} recebida com sucesso. Estoque atualizado."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro interno ao processar recebimento: {str(e)}")

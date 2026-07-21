@@ -8,16 +8,21 @@ export function PcpForm({ onClose, onSave, produtos }: { onClose: () => void; on
   const [saving, setSaving] = useState(false);
   const [produtoId, setProdutoId] = useState("");
   const [quantidadePlanejada, setQuantidadePlanejada] = useState("");
+  
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!produtoId || !quantidadePlanejada) return alert("Preencha os campos obrigatórios.");
+    if (!produtoId || !quantidadePlanejada) { setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Preencha os campos obrigatórios." }); return; }
     setSaving(true);
     try {
       await api.post("/pcp/ordens", { produto_id: parseInt(produtoId), quantidade_planejada: parseFloat(quantidadePlanejada) });
-      onSave();
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Ordem de Produção criada!" });
+      setTimeout(() => {
+          onSave();
+      }, 1500);
     } catch (err: any) {
-      alert(err.message || "Erro ao criar Ordem de Produção.");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao criar Ordem de Produção." });
     } finally {
       setSaving(false);
     }
@@ -40,6 +45,26 @@ export function PcpForm({ onClose, onSave, produtos }: { onClose: () => void; on
           {saving ? "Salvando..." : "Criar Ordem"}
         </button>
       </div>
+
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                type="button"
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
     </form>
   );
 }
@@ -49,6 +74,9 @@ export function Pcp() {
   const [ordens, setOrdens] = useState<any[]>([]);
   const [maquinas, setMaquinas] = useState<any[]>([]);
   const [produtos, setProdutos] = useState<any[]>([]);
+
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
   async function loadData() {
     try {
@@ -68,8 +96,21 @@ export function Pcp() {
   useEffect(() => { loadData(); }, []);
 
   async function handleIniciar(id: number) {
-    if (!confirm("Iniciar esta OP?")) return;
-    try { await api.post(`/pcp/ordens/${id}/iniciar`); loadData(); } catch (err: any) { alert(err.message); }
+    setConfirmModal({
+        open: true,
+        title: "Iniciar OP",
+        message: "Tem certeza que deseja iniciar o apontamento para esta OP?",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try { 
+                await api.post(`/pcp/ordens/${id}/iniciar`); 
+                setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Ordem iniciada com sucesso!" });
+                loadData(); 
+            } catch (err: any) { 
+                setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao iniciar OP" });
+            }
+        }
+    });
   }
 
   const maquinasOperando = maquinas.filter(m => m.status === "OPERANTE");
@@ -247,6 +288,52 @@ export function Pcp() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Feedback */}
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
+
+      {/* Modal de Confirmação */}
+      <Modal title={confirmModal.title} open={confirmModal.open} onClose={() => setConfirmModal({ ...confirmModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className="mt-1 p-2 rounded-full flex-shrink-0 bg-orange-100 text-orange-600">
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">!</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{confirmModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+            <button 
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })}
+                className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={confirmModal.onConfirm}
+                className="px-6 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20 transition-colors"
+            >
+                Confirmar
+            </button>
+        </div>
+      </Modal>
     </div>
   );
 }

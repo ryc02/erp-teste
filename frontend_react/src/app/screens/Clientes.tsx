@@ -328,11 +328,26 @@ export function Clientes() {
   const [filterTipo, setFilterTipo] = useState("todos");
   const [search, setSearch] = useState("");
 
-  // Filter modal states
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterUF, setFilterUF] = useState("");
   const [filterSituacao, setFilterSituacao] = useState("");
   const hasActiveFilters = !!(filterUF || filterSituacao);
+
+  // Histórico de Compras State
+  const [historicoPedidos, setHistoricoPedidos] = useState<any[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
+
+  useEffect(() => {
+    if (viewModal && viewModal.id) {
+      setLoadingHistorico(true);
+      api.get<any[]>(`/vendas/pedidos?cliente_id=${viewModal.id}`)
+        .then(setHistoricoPedidos)
+        .catch(console.error)
+        .finally(() => setLoadingHistorico(false));
+    } else {
+      setHistoricoPedidos([]);
+    }
+  }, [viewModal]);
 
   async function loadData() {
     setLoading(true);
@@ -455,7 +470,41 @@ export function Clientes() {
               <div><span className="text-muted-foreground">Tipo:</span> <p className="font-medium">{viewModal.tipo_contato || "Cliente"}</p></div>
               <div><span className="text-muted-foreground">Situação:</span> <p className="font-medium">{viewModal.situacao || "ATIVO"}</p></div>
             </div>
-            <div className="flex justify-end gap-2 pt-4 border-t border-border mt-6">
+
+            {/* Histórico de Compras */}
+            <div className="pt-4 border-t border-border mt-4">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Histórico de Pedidos / Compras</h4>
+              {loadingHistorico ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Carregando histórico...</p>
+              ) : historicoPedidos.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Nenhum pedido encontrado para este cliente.</p>
+              ) : (
+                <div className="max-h-40 overflow-y-auto border border-border rounded-lg">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="p-2 font-semibold">Pedido</th>
+                        <th className="p-2 font-semibold">Data</th>
+                        <th className="p-2 font-semibold">Status</th>
+                        <th className="p-2 font-semibold text-right">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {historicoPedidos.map((p) => (
+                        <tr key={p.id} className="hover:bg-muted/20">
+                          <td className="p-2 font-mono">#{p.id}</td>
+                          <td className="p-2 text-muted-foreground">{p.data_pedido ? new Date(p.data_pedido).toLocaleDateString() : "—"}</td>
+                          <td className="p-2"><Badge variant="default">{p.status}</Badge></td>
+                          <td className="p-2 text-right font-semibold">R$ {p.valor_total?.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
               <button onClick={() => setViewModal(null)} className="text-xs px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted">Fechar</button>
               {can("cadastros", "delete") && (
                 <button onClick={() => { handleDelete(viewModal.id); setViewModal(null); }} className="text-xs px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1.5">

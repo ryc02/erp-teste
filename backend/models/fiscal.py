@@ -30,6 +30,7 @@ class NotaFiscal(Base):
     __tablename__ = "notas_fiscais"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
     pedido_id = Column(Integer, ForeignKey("pedidos_venda.id"), nullable=True)
     
     tipo = Column(String, default="E") # E (Entrada), S (Saída)

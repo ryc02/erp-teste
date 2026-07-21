@@ -86,8 +86,6 @@ def criar_ordem_producao(
         raise HTTPException(status_code=404, detail="Produto não encontrado")
         
     ficha_tecnica = db.query(models.FichaTecnicaItem).filter(models.FichaTecnicaItem.produto_composto_id == op.produto_id).all()
-    if not ficha_tecnica:
-        raise HTTPException(status_code=400, detail="Este produto não possui ficha técnica configurada.")
 
     db_op = models.OrdemProducao(
         produto_id=op.produto_id,

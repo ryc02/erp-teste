@@ -15,6 +15,8 @@ export function ComprasForm({ onClose, onSave }: { onClose: () => void; onSave: 
     observacoes: ""
   });
 
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+
   const [itens, setItens] = useState([{ produto_id: "", quantidade: 1, preco_unitario: 0 }]);
 
   useEffect(() => {
@@ -30,8 +32,8 @@ export function ComprasForm({ onClose, onSave }: { onClose: () => void; onSave: 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.fornecedor_id) return alert("Selecione o fornecedor");
-    if (itens.some(i => !i.produto_id)) return alert("Preencha todos os itens corretamente");
+    if (!form.fornecedor_id) { setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione o fornecedor" }); return; }
+    if (itens.some(i => !i.produto_id)) { setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Preencha todos os itens corretamente" }); return; }
 
     setLoading(true);
     try {
@@ -52,9 +54,12 @@ export function ComprasForm({ onClose, onSave }: { onClose: () => void; onSave: 
       };
 
       await api.post("/compras/ordens", payload);
-      onSave();
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Ordem de compra criada com sucesso!" });
+      setTimeout(() => {
+        onSave();
+      }, 1500);
     } catch (err: any) {
-      alert(err?.message || "Erro ao criar ordem de compra");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao criar ordem de compra" });
     } finally {
       setLoading(false);
     }
@@ -185,6 +190,26 @@ export function ComprasForm({ onClose, onSave }: { onClose: () => void; onSave: 
           {loading ? "Salvando..." : "Salvar Pedido"}
         </button>
       </div>
+
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                type="button"
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
     </form>
   );
 }
@@ -193,6 +218,9 @@ export function Compras() {
   const [modal, setModal] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
   async function loadData() {
     try {
@@ -211,24 +239,38 @@ export function Compras() {
   }, []);
 
   async function handleAprovar(id: number) {
-    if (!confirm("Aprovar esta Ordem de Compra?")) return;
-    try {
-      await api.post(`/compras/ordens/${id}/aprovar`);
-      loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao aprovar");
-    }
+    setConfirmModal({
+        open: true,
+        title: "Aprovar Ordem",
+        message: "Aprovar esta Ordem de Compra?",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try {
+              await api.post(`/compras/ordens/${id}/aprovar`);
+              loadData();
+            } catch (err: any) {
+              setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao aprovar" });
+            }
+        }
+    });
   }
 
   async function handleReceber(id: number) {
-    if (!confirm("Confirmar recebimento? Os itens serão adicionados ao estoque.")) return;
-    try {
-      await api.post(`/compras/ordens/${id}/receber`);
-      alert("Recebimento concluído. Estoque atualizado.");
-      loadData();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao receber");
-    }
+    setConfirmModal({
+        open: true,
+        title: "Receber Ordem",
+        message: "Confirmar recebimento? Os itens serão adicionados ao estoque.",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try {
+              await api.post(`/compras/ordens/${id}/receber`);
+              setFeedbackModal({ open: true, type: "success", title: "Estoque Atualizado", message: "Recebimento concluído. Estoque atualizado." });
+              loadData();
+            } catch (err: any) {
+              setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao receber" });
+            }
+        }
+    });
   }
 
   return (
@@ -305,6 +347,52 @@ export function Compras() {
           )}
         </div>
       </div>
+
+      {/* Modal de Feedback */}
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
+
+      {/* Modal de Confirmação */}
+      <Modal title={confirmModal.title} open={confirmModal.open} onClose={() => setConfirmModal({ ...confirmModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className="mt-1 p-2 rounded-full flex-shrink-0 bg-orange-100 text-orange-600">
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">!</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{confirmModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+            <button 
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })}
+                className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={confirmModal.onConfirm}
+                className="px-6 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20 transition-colors"
+            >
+                Confirmar
+            </button>
+        </div>
+      </Modal>
     </div>
   );
 }

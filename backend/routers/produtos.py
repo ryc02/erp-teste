@@ -196,6 +196,8 @@ def _buscar_template_etiqueta(
         template = db.query(models.EtiquetaTemplate).filter(models.EtiquetaTemplate.id == template_id).first()
     if not template:
         template = db.query(models.EtiquetaTemplate).filter(models.EtiquetaTemplate.padrao.is_(True)).first()
+    if not template:
+        template = db.query(models.EtiquetaTemplate).first()
     return template
 
 
@@ -357,8 +359,13 @@ def criar_produto(
     if produto.estoque_minimo > produto.estoque_maximo:
         raise HTTPException(status_code=400, detail="O estoque mínimo não pode ser maior que o máximo.")
 
-    db_produto = models.Produto(**produto.model_dump())
+    db_produto = models.Produto(**produto.model_dump(exclude={"itens_kit"}))
     db.add(db_produto)
+    db.flush()
+    if produto.itens_kit:
+        for item in produto.itens_kit:
+            db_item = models.ProdutoKitItem(kit_id=db_produto.id, produto_id=item.produto_id, quantidade=item.quantidade)
+            db.add(db_item)
     db.commit()
     db.refresh(db_produto)
     
@@ -513,10 +520,16 @@ def atualizar_produto(
         if produto.estoque_minimo > produto.estoque_maximo:
             raise HTTPException(status_code=400, detail="O estoque mínimo não pode ser maior que o máximo.")
 
-    obj_data = produto.model_dump(exclude_unset=True)
+    obj_data = produto.model_dump(exclude_unset=True, exclude={"itens_kit"})
     for key, value in obj_data.items():
         setattr(db_produto, key, value)
         
+    if produto.itens_kit is not None:
+        db.query(models.ProdutoKitItem).filter(models.ProdutoKitItem.kit_id == id).delete()
+        for item in produto.itens_kit:
+            db_item = models.ProdutoKitItem(kit_id=id, produto_id=item.produto_id, quantidade=item.quantidade)
+            db.add(db_item)
+            
     db.commit()
     
     AuditoriaService.registrar(

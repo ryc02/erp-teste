@@ -111,7 +111,7 @@ def gerar_picking_list(
                 produto = db.query(Produto).filter(Produto.id == prod_id).first()
                 picking_dict[prod_id] = {
                     "produto_id": prod_id,
-                    "codigo_sku": produto.codigo_sku if (produto and produto.codigo_sku) else "N/A",
+                    "codigo_sku": produto.sku if (produto and produto.sku) else "N/A",
                     "nome": produto.nome if produto else f"Produto ID {prod_id}",
                     "localizacao": f"{produto.corredor or ''}/{produto.prateleira or ''}" if produto else "",
                     "quantidade_total": 0,
@@ -147,41 +147,71 @@ def gerar_etiquetas(
             detail="Não foi possível obter as etiquetas em sua plataforma e-commerce. Problema nos parâmetros enviados. Wrong parameters, detail: order_list must contain at least 1 item."
         )
     
-    html = f"""
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Impressão de Etiquetas</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; padding: 20px; }}
-            .etiqueta {{
-                border: 2px dashed #000;
-                width: 10cm; height: 15cm;
-                padding: 20px;
-                margin-bottom: 20px;
-                page-break-after: always;
-                box-sizing: border-box;
-            }}
-            .barcode {{ background: #000; height: 50px; width: 80%; margin: 20px auto; }}
-        </style>
-    </head>
-    <body onload="window.print()">
-    """
-    for p in pedidos:
-        html += f"""
-        <div class="etiqueta">
-            <h3>DESTINATÁRIO</h3>
-            <p><strong>{p.cliente_nome}</strong></p>
-            <p>Pedido #{p.id}</p>
-            <div class="barcode"></div>
-            <hr>
-            <h4>REMETENTE</h4>
-            <p>{config.remetente_nome or 'ERP Venner'}</p>
-            <p>{config.remetente_documento or ''}</p>
-            <p>{config.remetente_endereco or ''}, {config.remetente_cidade or ''}-{config.remetente_estado or ''}</p>
-        </div>
+    if config.template_etiqueta:
+        html = f"""
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Impressão de Etiquetas</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 20px; }}
+                .etiqueta {{
+                    page-break-after: always;
+                    box-sizing: border-box;
+                }}
+            </style>
+        </head>
+        <body onload="window.print()">
         """
-    html += "</body></html>"
+        for p in pedidos:
+            tpl = config.template_etiqueta
+            tpl = tpl.replace("[[pedido_id]]", str(p.id))
+            tpl = tpl.replace("[[cliente_nome]]", p.cliente_nome or "")
+            tpl = tpl.replace("[[remetente_nome]]", config.remetente_nome or "")
+            tpl = tpl.replace("[[remetente_documento]]", config.remetente_documento or "")
+            tpl = tpl.replace("[[remetente_endereco]]", config.remetente_endereco or "")
+            tpl = tpl.replace("[[remetente_cidade]]", config.remetente_cidade or "")
+            tpl = tpl.replace("[[remetente_estado]]", config.remetente_estado or "")
+            tpl = tpl.replace("[[remetente_cep]]", config.remetente_cep or "")
+            html += f"<div class='etiqueta'>{tpl}</div>"
+        html += "</body></html>"
+    else:
+        html = f"""
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Impressão de Etiquetas</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 20px; }}
+                .etiqueta {{
+                    border: 2px dashed #000;
+                    width: 10cm; height: 15cm;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                    page-break-after: always;
+                    box-sizing: border-box;
+                }}
+                .barcode {{ background: #000; height: 50px; width: 80%; margin: 20px auto; }}
+            </style>
+        </head>
+        <body onload="window.print()">
+        """
+        for p in pedidos:
+            html += f"""
+            <div class="etiqueta">
+                <h3>DESTINATÁRIO</h3>
+                <p><strong>{p.cliente_nome}</strong></p>
+                <p>Pedido #{p.id}</p>
+                <div class="barcode"></div>
+                <hr>
+                <h4>REMETENTE</h4>
+                <p>{config.remetente_nome or 'ERP Venner'}</p>
+                <p>{config.remetente_documento or ''}</p>
+                <p>{config.remetente_endereco or ''}, {config.remetente_cidade or ''}-{config.remetente_estado or ''}</p>
+            </div>
+            """
+        html += "</body></html>"
+    
     return HTMLResponse(content=html)
 
 @router.post("/gerar-dce")

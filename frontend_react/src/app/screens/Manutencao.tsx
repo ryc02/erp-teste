@@ -9,15 +9,20 @@ export function NovaMaquinaForm({ onClose, onSave }: { onClose: () => void; onSa
   const [tipo, setTipo] = useState("");
   const [capacidade, setCapacidade] = useState("");
 
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nome) return alert("Nome é obrigatório.");
+    if (!nome) { setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Nome é obrigatório." }); return; }
     setSaving(true);
     try {
       await api.post("/manutencao/maquinas", { nome, tipo, capacidade });
-      onSave();
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Máquina cadastrada!" });
+      setTimeout(() => {
+          onSave();
+      }, 1500);
     } catch (err: any) {
-      alert(err.message || "Erro ao criar máquina.");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao criar máquina." });
     } finally {
       setSaving(false);
     }
@@ -38,6 +43,26 @@ export function NovaMaquinaForm({ onClose, onSave }: { onClose: () => void; onSa
           {saving ? "Salvando..." : "Salvar Máquina"}
         </button>
       </div>
+      
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                type="button"
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
     </form>
   );
 }
@@ -48,15 +73,20 @@ export function NovaOsForm({ onClose, onSave, maquinas }: { onClose: () => void;
   const [tipo, setTipo] = useState("PREVENTIVA");
   const [problema, setProblema] = useState("");
 
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!maquinaId) return alert("Selecione a máquina.");
+    if (!maquinaId) { setFeedbackModal({ open: true, type: "warning", title: "Atenção", message: "Selecione a máquina." }); return; }
     setSaving(true);
     try {
       await api.post("/manutencao/os", { maquina_id: parseInt(maquinaId), tipo, problema_desc: problema });
-      onSave();
+      setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "OS aberta com sucesso!" });
+      setTimeout(() => {
+          onSave();
+      }, 1500);
     } catch (err: any) {
-      alert(err.message || "Erro ao abrir OS.");
+      setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao abrir OS." });
     } finally {
       setSaving(false);
     }
@@ -80,6 +110,26 @@ export function NovaOsForm({ onClose, onSave, maquinas }: { onClose: () => void;
           {saving ? "Salvando..." : "Abrir OS"}
         </button>
       </div>
+      
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                type="button"
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
     </form>
   );
 }
@@ -89,6 +139,11 @@ export function Manutencao() {
   const [modalOS, setModalOS] = useState(false);
   const [ordens, setOrdens] = useState<any[]>([]);
   const [maquinas, setMaquinas] = useState<any[]>([]);
+
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean; type: "success" | "error" | "warning"; title: string; message: string }>({ open: false, type: "success", title: "", message: "" });
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  
+  const [promptModal, setPromptModal] = useState<{ open: boolean; title: string; message: string; value: string; onConfirm: (val: string) => void }>({ open: false, title: "", message: "", value: "", onConfirm: () => {} });
 
   async function loadData() {
     try {
@@ -104,22 +159,58 @@ export function Manutencao() {
   useEffect(() => { loadData(); }, []);
 
   async function handleDeleteOS(id: number) {
-    if (!confirm("Excluir esta OS?")) return;
-    try { await api.delete(`/manutencao/os/${id}`); loadData(); } catch (err: any) { alert(err.message); }
+    setConfirmModal({
+        open: true,
+        title: "Excluir OS",
+        message: "Tem certeza que deseja excluir esta OS?",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try { 
+                await api.delete(`/manutencao/os/${id}`); 
+                loadData(); 
+                setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "OS excluída." });
+            } catch (err: any) { 
+                setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao excluir" }); 
+            }
+        }
+    });
   }
   
   async function handleDeleteMaquina(id: number) {
-    if (!confirm("Excluir esta Máquina? (Requer que não haja OS atrelada)")) return;
-    try { await api.delete(`/manutencao/maquinas/${id}`); loadData(); } catch (err: any) { alert(err.message); }
+    setConfirmModal({
+        open: true,
+        title: "Excluir Máquina",
+        message: "Excluir esta Máquina? (Requer que não haja OS atrelada a ela)",
+        onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, open: false }));
+            try { 
+                await api.delete(`/manutencao/maquinas/${id}`); 
+                loadData(); 
+                setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "Máquina excluída." });
+            } catch (err: any) { 
+                setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao excluir" }); 
+            }
+        }
+    });
   }
 
   async function handleFinalizarOS(id: number) {
-    const mo = prompt("Custo com Mão de Obra (R$)?", "0");
-    if (mo === null) return;
-    try { 
-      await api.post(`/manutencao/os/${id}/finalizar`, { custo_mao_obra: parseFloat(mo) || 0 }); 
-      loadData(); 
-    } catch (err: any) { alert(err.message); }
+    setPromptModal({
+        open: true,
+        title: "Finalizar OS",
+        message: "Informe o Custo com Mão de Obra (R$):",
+        value: "0",
+        onConfirm: async (val: string) => {
+            setPromptModal(prev => ({ ...prev, open: false }));
+            try { 
+                await api.post(`/manutencao/os/${id}/finalizar`, { custo_mao_obra: parseFloat(val) || 0 }); 
+                setFeedbackModal({ open: true, type: "success", title: "Sucesso", message: "OS finalizada com sucesso." });
+                loadData(); 
+            } catch (err: any) { 
+                setFeedbackModal({ open: true, type: "error", title: "Erro", message: err?.message || "Erro ao finalizar OS" }); 
+            }
+        }
+    });
   }
 
   const osAbertas = ordens.filter(o => o.status === "ABERTA");
@@ -235,6 +326,81 @@ export function Manutencao() {
           </table>
         </div>
       </div>
+
+      {/* Modal de Feedback */}
+      <Modal title={feedbackModal.title} open={feedbackModal.open} onClose={() => setFeedbackModal({ ...feedbackModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${feedbackModal.type === 'error' ? 'bg-red-100 text-red-600' : feedbackModal.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">{feedbackModal.type === 'success' ? '✓' : '!'}</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{feedbackModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+            <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                className={`px-6 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-colors ${feedbackModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' : feedbackModal.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            >
+                Entendido
+            </button>
+        </div>
+      </Modal>
+
+      {/* Modal de Confirmação */}
+      <Modal title={confirmModal.title} open={confirmModal.open} onClose={() => setConfirmModal({ ...confirmModal, open: false })}>
+        <div className="flex items-start gap-4">
+            <div className="mt-1 p-2 rounded-full flex-shrink-0 bg-orange-100 text-orange-600">
+                <div className="w-6 h-6 flex items-center justify-center font-bold text-lg">!</div>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{confirmModal.message}</p>
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+            <button 
+                onClick={() => setConfirmModal({ ...confirmModal, open: false })}
+                className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={confirmModal.onConfirm}
+                className="px-6 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20 transition-colors"
+            >
+                Confirmar
+            </button>
+        </div>
+      </Modal>
+
+      {/* Modal de Prompt */}
+      <Modal title={promptModal.title} open={promptModal.open} onClose={() => setPromptModal({ ...promptModal, open: false })}>
+        <div className="flex flex-col gap-4">
+            <div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">{promptModal.message}</p>
+                <Input 
+                    type="number"
+                    step="0.01"
+                    value={promptModal.value}
+                    onChange={(e) => setPromptModal({ ...promptModal, value: e.target.value })}
+                />
+            </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+            <button 
+                onClick={() => setPromptModal({ ...promptModal, open: false })}
+                className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={() => promptModal.onConfirm(promptModal.value)}
+                className="px-6 py-2 rounded-lg text-sm font-medium bg-[#0ea5e9] hover:bg-[#0284c7] text-white shadow-sm transition-colors"
+            >
+                Salvar e Finalizar
+            </button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -8,6 +8,7 @@ from datetime import datetime
 from database import get_db
 from services.auth import get_current_user
 from models import ContaFinanceira, CategoriaFinanceira, ContaBancaria, FechamentoFinanceiro
+from dependencies import get_empresa_id
 import pytz
 from pydantic import BaseModel
 
@@ -52,9 +53,12 @@ def get_contas(
     tipo: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db), 
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     query = db.query(ContaFinanceira)
+    if empresa_id:
+        query = query.filter(ContaFinanceira.empresa_id == empresa_id)
     if tipo:
         query = query.filter(ContaFinanceira.tipo == tipo.upper())
     if status:
@@ -83,8 +87,11 @@ def get_contas(
         })
     return res
 
-def check_fechamento_financeiro(db: Session, data_movimento: datetime):
-    fechamento = db.query(FechamentoFinanceiro).order_by(FechamentoFinanceiro.data_fechamento.desc()).first()
+def check_fechamento_financeiro(db: Session, data_movimento: datetime, empresa_id: int = None):
+    query = db.query(FechamentoFinanceiro)
+    if empresa_id:
+        query = query.filter(FechamentoFinanceiro.empresa_id == empresa_id)
+    fechamento = query.order_by(FechamentoFinanceiro.data_fechamento.desc()).first()
     if fechamento:
         # Guarantee both are timezone aware or both naive for comparison
         # Simplest is to just compare dates if timezones are annoying, but let's assume datetimes are ok
@@ -98,12 +105,13 @@ def check_fechamento_financeiro(db: Session, data_movimento: datetime):
 def create_conta(
     conta: ContaCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     import uuid
     from dateutil.relativedelta import relativedelta
     
-    check_fechamento_financeiro(db, conta.data_vencimento)
+    check_fechamento_financeiro(db, conta.data_vencimento, empresa_id)
     
     qtd_parcelas = conta.total_parcelas if conta.total_parcelas and conta.total_parcelas > 0 else 1
     recorrencia_id = str(uuid.uuid4()) if qtd_parcelas > 1 else None
@@ -122,13 +130,14 @@ def create_conta(
             elif conta.recorrencia == 'QUINZENAL':
                 data_base = data_base + relativedelta(days=15)
                 
-            check_fechamento_financeiro(db, data_base)
+            check_fechamento_financeiro(db, data_base, empresa_id)
             
         desc = conta.descricao
         if qtd_parcelas > 1:
             desc = f"{conta.descricao} ({i}/{qtd_parcelas})"
             
         nova_conta = ContaFinanceira(
+            empresa_id=empresa_id,
             tipo=conta.tipo.upper(),
             descricao=desc,
             valor=conta.valor,
@@ -161,11 +170,11 @@ def update_status(
     if not conta:
         raise HTTPException(status_code=404, detail="Conta não encontrada")
         
-    check_fechamento_financeiro(db, conta.data_vencimento)
+    check_fechamento_financeiro(db, conta.data_vencimento, conta.empresa_id)
     if conta.data_pagamento:
-        check_fechamento_financeiro(db, conta.data_pagamento)
+        check_fechamento_financeiro(db, conta.data_pagamento, conta.empresa_id)
     if dados.data_pagamento:
-        check_fechamento_financeiro(db, dados.data_pagamento)
+        check_fechamento_financeiro(db, dados.data_pagamento, conta.empresa_id)
         
     if dados.status.upper() == "PAGO":
         # Handle partial payment
@@ -175,6 +184,7 @@ def update_status(
             # Create new pending bill for the remainder
             saldo_restante = conta.valor - valor_pagar
             nova_conta = ContaFinanceira(
+                empresa_id=conta.empresa_id,
                 tipo=conta.tipo,
                 status="PENDENTE",
                 descricao=f"{conta.descricao} (Saldo Restante)",
@@ -209,9 +219,9 @@ def delete_conta(
     if not conta:
         raise HTTPException(status_code=404, detail="Conta não encontrada")
         
-    check_fechamento_financeiro(db, conta.data_vencimento)
+    check_fechamento_financeiro(db, conta.data_vencimento, conta.empresa_id)
     if conta.data_pagamento:
-        check_fechamento_financeiro(db, conta.data_pagamento)
+        check_fechamento_financeiro(db, conta.data_pagamento, conta.empresa_id)
         
     db.delete(conta)
     db.commit()
@@ -221,8 +231,11 @@ class FechamentoCreate(BaseModel):
     data_fechamento: datetime
 
 @router.get("/fechamentos")
-def get_fechamento(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    f = db.query(FechamentoFinanceiro).order_by(FechamentoFinanceiro.data_fechamento.desc()).first()
+def get_fechamento(db: Session = Depends(get_db), current_user = Depends(get_current_user), empresa_id: int = Depends(get_empresa_id)):
+    query = db.query(FechamentoFinanceiro)
+    if empresa_id:
+        query = query.filter(FechamentoFinanceiro.empresa_id == empresa_id)
+    f = query.order_by(FechamentoFinanceiro.data_fechamento.desc()).first()
     if not f:
         return None
     return {
@@ -236,9 +249,11 @@ def get_fechamento(db: Session = Depends(get_db), current_user = Depends(get_cur
 def create_fechamento(
     dados: FechamentoCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     novo = FechamentoFinanceiro(
+        empresa_id=empresa_id,
         data_fechamento=dados.data_fechamento,
         usuario_id=current_user.id
     )
@@ -250,7 +265,8 @@ def create_fechamento(
 def criar_transferencia(
     dados: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     origem_id = dados.get("origem_id")
     destino_id = dados.get("destino_id")
@@ -262,7 +278,7 @@ def criar_transferencia(
         raise HTTPException(status_code=400, detail="Contas origem e destino devem ser diferentes")
         
     data_dt = datetime.fromisoformat(data.replace("Z", "+00:00"))
-    check_fechamento_financeiro(db, data_dt)
+    check_fechamento_financeiro(db, data_dt, empresa_id)
     
     # Needs a Category for Transfer (internal logic or we create one if it doesn't exist)
     cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.descricao == "Transferência entre Contas").first()
@@ -274,6 +290,7 @@ def criar_transferencia(
         
     # Saida na origem
     saida = ContaFinanceira(
+        empresa_id=empresa_id,
         tipo="PAGAR",
         descricao=descricao,
         valor=valor,
@@ -286,6 +303,7 @@ def criar_transferencia(
     )
     # Entrada no destino
     entrada = ContaFinanceira(
+        empresa_id=empresa_id,
         tipo="RECEBER",
         descricao=descricao,
         valor=valor,
@@ -304,7 +322,7 @@ def criar_transferencia(
     return {"message": "Transferência realizada com sucesso"}
 
 @router.post("/ofx/importar")
-async def importar_ofx(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def importar_ofx(file: UploadFile = File(...), db: Session = Depends(get_db), empresa_id: int = Depends(get_empresa_id)):
     """Lê um arquivo OFX e retorna as transações extraídas."""
     if not file.filename.lower().endswith('.ofx'):
         raise HTTPException(status_code=400, detail="O arquivo deve ser .ofx")
@@ -348,8 +366,11 @@ async def importar_ofx(file: UploadFile = File(...), db: Session = Depends(get_d
     return {"transacoes": transacoes}
 
 @router.delete("/fechamentos")
-def delete_fechamento(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    f = db.query(FechamentoFinanceiro).order_by(FechamentoFinanceiro.data_fechamento.desc()).first()
+def delete_fechamento(db: Session = Depends(get_db), current_user = Depends(get_current_user), empresa_id: int = Depends(get_empresa_id)):
+    query = db.query(FechamentoFinanceiro)
+    if empresa_id:
+        query = query.filter(FechamentoFinanceiro.empresa_id == empresa_id)
+    f = query.order_by(FechamentoFinanceiro.data_fechamento.desc()).first()
     if f:
         db.delete(f)
         db.commit()
@@ -358,28 +379,34 @@ def delete_fechamento(db: Session = Depends(get_db), current_user = Depends(get_
 @router.get("/dashboard")
 def get_dashboard_financeiro(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
+    def apply_empresa(q):
+        if empresa_id:
+            return q.filter(ContaFinanceira.empresa_id == empresa_id)
+        return q
+        
     # Calcula os totais pendentes a receber e a pagar
-    a_receber_total = db.query(func.sum(ContaFinanceira.valor)).filter(
+    a_receber_total = apply_empresa(db.query(func.sum(ContaFinanceira.valor)).filter(
         ContaFinanceira.tipo == "RECEBER",
         ContaFinanceira.status == "PENDENTE"
-    ).scalar() or 0.0
+    )).scalar() or 0.0
     
-    a_pagar_total = db.query(func.sum(ContaFinanceira.valor)).filter(
+    a_pagar_total = apply_empresa(db.query(func.sum(ContaFinanceira.valor)).filter(
         ContaFinanceira.tipo == "PAGAR",
         ContaFinanceira.status == "PENDENTE"
-    ).scalar() or 0.0
+    )).scalar() or 0.0
     
-    receitas_pagas = db.query(func.sum(ContaFinanceira.valor)).filter(
+    receitas_pagas = apply_empresa(db.query(func.sum(ContaFinanceira.valor)).filter(
         ContaFinanceira.tipo == "RECEBER",
         ContaFinanceira.status == "PAGO"
-    ).scalar() or 0.0
+    )).scalar() or 0.0
     
-    despesas_pagas = db.query(func.sum(ContaFinanceira.valor)).filter(
+    despesas_pagas = apply_empresa(db.query(func.sum(ContaFinanceira.valor)).filter(
         ContaFinanceira.tipo == "PAGAR",
         ContaFinanceira.status == "PAGO"
-    ).scalar() or 0.0
+    )).scalar() or 0.0
     
     saldo_caixa = receitas_pagas - despesas_pagas
 
@@ -389,6 +416,60 @@ def get_dashboard_financeiro(
         "saldo_caixa": saldo_caixa,
         "receitas_pagas": receitas_pagas,
         "despesas_pagas": despesas_pagas
+    }
+
+@router.get("/caixa")
+def get_caixa(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
+):
+    def apply_empresa(q):
+        if empresa_id:
+            return q.filter(ContaFinanceira.empresa_id == empresa_id)
+        return q
+        
+    receitas_pagas = apply_empresa(db.query(func.sum(ContaFinanceira.valor)).filter(
+        ContaFinanceira.tipo == "RECEBER",
+        ContaFinanceira.status == "PAGO"
+    )).scalar() or 0.0
+    
+    despesas_pagas = apply_empresa(db.query(func.sum(ContaFinanceira.valor)).filter(
+        ContaFinanceira.tipo == "PAGAR",
+        ContaFinanceira.status == "PAGO"
+    )).scalar() or 0.0
+    
+    saldo_caixa = receitas_pagas - despesas_pagas
+
+    hoje = datetime.now().date()
+    
+    # Extrair extrato do dia (movimentações pagas hoje)
+    movimentacoes_hoje = apply_empresa(db.query(ContaFinanceira).filter(
+        ContaFinanceira.status == "PAGO",
+        func.date(ContaFinanceira.data_pagamento) == hoje
+    )).order_by(ContaFinanceira.data_pagamento.asc()).all()
+    
+    extrato = []
+    
+    # Fake opening balance for demonstration if there is no opening
+    extrato.append({
+        "tipo": "abertura",
+        "hora": "08:00",
+        "descricao": "Abertura de Caixa",
+        "valor": saldo_caixa
+    })
+    
+    for mov in movimentacoes_hoje:
+        extrato.append({
+            "tipo": "entrada" if mov.tipo == "RECEBER" else "saida",
+            "hora": mov.data_pagamento.strftime("%H:%M") if mov.data_pagamento else "12:00",
+            "descricao": mov.descricao,
+            "valor": mov.valor
+        })
+        
+    return {
+        "saldo": saldo_caixa,
+        "extrato": extrato
     }
 
 @router.get("/categorias")
@@ -404,12 +485,16 @@ def create_categoria(cat: CategoriaCreate, db: Session = Depends(get_db), curren
     return nova_cat
 
 @router.get("/contas-bancarias")
-def get_contas_bancarias(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    return db.query(ContaBancaria).all()
+def get_contas_bancarias(db: Session = Depends(get_db), current_user = Depends(get_current_user), empresa_id: int = Depends(get_empresa_id)):
+    query = db.query(ContaBancaria)
+    if empresa_id:
+        query = query.filter(ContaBancaria.empresa_id == empresa_id)
+    return query.all()
 
 @router.post("/contas-bancarias")
-def create_conta_bancaria(cb: ContaBancariaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def create_conta_bancaria(cb: ContaBancariaCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user), empresa_id: int = Depends(get_empresa_id)):
     nova_cb = ContaBancaria(**cb.model_dump())
+    nova_cb.empresa_id = empresa_id
     db.add(nova_cb)
     db.commit()
     db.refresh(nova_cb)
@@ -420,9 +505,13 @@ def get_dre(
     data_inicio: Optional[datetime] = None,
     data_fim: Optional[datetime] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     query = db.query(ContaFinanceira).join(CategoriaFinanceira)
+    
+    if empresa_id:
+        query = query.filter(ContaFinanceira.empresa_id == empresa_id)
     
     if data_inicio:
         query = query.filter(ContaFinanceira.data_vencimento >= data_inicio)
@@ -462,9 +551,12 @@ def get_fluxo_caixa(
     data_inicio: Optional[datetime] = None,
     data_fim: Optional[datetime] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     query = db.query(ContaFinanceira)
+    if empresa_id:
+        query = query.filter(ContaFinanceira.empresa_id == empresa_id)
     
     if conta_bancaria_id:
         query = query.filter(ContaFinanceira.conta_bancaria_id == conta_bancaria_id)

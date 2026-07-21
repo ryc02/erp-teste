@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Filter, Download, Plus, X } from "lucide-react";
+import { Search, Filter, Download, Plus, X, AlertCircle, CheckCircle } from "lucide-react";
 
 export function fmt(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
@@ -60,7 +60,7 @@ export function FormSection({ title, children }: { title: string; children: Reac
 export function Modal({ open, onClose, title, subtitle, children, wide }: { open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className={`relative bg-card rounded-xl border border-border shadow-2xl flex flex-col max-h-[90vh] ${wide ? "w-full max-w-4xl" : "w-full max-w-2xl"}`}>
         <div className="flex items-start justify-between p-5 border-b border-border flex-shrink-0">

@@ -9,7 +9,7 @@ from comercial.schemas import RepresentanteCreate, RepresentanteUpdate
 
 
 class RepresentanteService:
-    CODIGO_DIRETO = 1
+    CODIGO_DIRETO = "1"
     NOME_DIRETO = "DIRETO"
 
     @staticmethod
@@ -38,8 +38,8 @@ class RepresentanteService:
         *,
         representante_id_atual: Optional[int] = None,
     ):
-        if codigo is None:
-            raise HTTPException(status_code=400, detail="Informe o código do representante.")
+        if codigo is None or str(codigo).strip() == "":
+            return
 
         query = db.query(RepresentanteComercial).filter(RepresentanteComercial.codigo == codigo)
         if representante_id_atual is not None:

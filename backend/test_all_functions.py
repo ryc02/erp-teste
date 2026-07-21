@@ -19,7 +19,7 @@ def get_token():
 token = get_token()
 headers = {"Authorization": f"Bearer {token}"} if token else {}
 
-def test_endpoint(name, method, url, payload=None):
+def check_endpoint(name, method, url, payload=None):
     print(f"\n[*] Testando {name} ({method} {url})...")
     try:
         if method == "GET":
@@ -47,8 +47,8 @@ prod_payload = {
     "controlar_estoque": True,
     "controlar_lotes": False
 }
-res_prod = test_endpoint("Criar Produto", "POST", "/produtos/", prod_payload)
-test_endpoint("Listar Produtos", "GET", "/produtos/")
+res_prod = check_endpoint("Criar Produto", "POST", "/produtos/", prod_payload)
+check_endpoint("Listar Produtos", "GET", "/produtos/")
 
 # Testar Clientes
 cli_payload = {
@@ -57,8 +57,8 @@ cli_payload = {
     "cpf_cnpj": "12345678901",
     "email": "teste@teste.com"
 }
-res_cli = test_endpoint("Criar Cliente", "POST", "/comercial/clientes", cli_payload)
-test_endpoint("Listar Clientes", "GET", "/comercial/clientes")
+res_cli = check_endpoint("Criar Cliente", "POST", "/comercial/clientes", cli_payload)
+check_endpoint("Listar Clientes", "GET", "/comercial/clientes")
 
 # Testar Pedidos (CRM)
 if res_cli and res_cli.status_code == 200:
@@ -76,17 +76,17 @@ if res_cli and res_cli.status_code == 200:
             }
         ]
     }
-    test_endpoint("Criar Pedido Venda", "POST", "/vendas/pedidos", pedido_payload)
+    check_endpoint("Criar Pedido Venda", "POST", "/vendas/pedidos", pedido_payload)
 
-test_endpoint("Listar Pedidos", "GET", "/vendas/pedidos")
+check_endpoint("Listar Pedidos", "GET", "/vendas/pedidos")
 
 # Testar PCP
-test_endpoint("Listar Ordens Produção", "GET", "/pcp/ordens/")
+check_endpoint("Listar Ordens Produção", "GET", "/pcp/ordens/")
 
 # Testar Manutenção
-test_endpoint("Listar Máquinas", "GET", "/manutencao/maquinas/")
+check_endpoint("Listar Máquinas", "GET", "/manutencao/maquinas/")
 
 # Testar Estoque (Movimentações)
-test_endpoint("Listar Movimentações", "GET", "/movimentacoes/")
+check_endpoint("Listar Movimentações", "GET", "/movimentacoes/")
 
 print("\n[+] Teste completo finalizado.")

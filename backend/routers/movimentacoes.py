@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+from typing import Optional
 from database import get_db
+from dependencies import get_empresa_id
 import schemas, models
 from services.estoque_service import EstoqueService
 from services.auth import get_current_user, check_role
 from services.auditoria_service import AuditoriaService
 from services.websocket_service import manager
-from fastapi import Request
 
 ALLOWED_STOCK_ROLES = ["ADMIN", "GERENTE", "OPERADOR"]
 
@@ -22,9 +23,10 @@ async def registrar_movimentacao(
     mov: schemas.MovimentacaoCreate, 
     request: Request,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
-    resultado = EstoqueService.registrar_movimentacao(db, mov)
+    resultado = EstoqueService.registrar_movimentacao(db, mov, empresa_id)
     
     # Auditoria
     AuditoriaService.registrar(

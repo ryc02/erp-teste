@@ -19,7 +19,7 @@ from routers import (
     dashboard, manutencao, usuarios, configuracoes, pcp,
     produtividade,
     relatorios, auth, vendas, expedicao, financeiro, compras,
-    configuracoes_vendas, configuracoes_expedicao, resultados_comerciais, propostas, separacao, fiscal
+    configuracoes_vendas, configuracoes_expedicao, resultados_comerciais, propostas, separacao, fiscal, empresas
 )
 from comercial.router import router as comercial_router
 from services.auth import get_password_hash
@@ -709,6 +709,7 @@ app.include_router(inventario.router, prefix=api_prefix)
 app.include_router(dashboard.router, prefix=api_prefix)
 app.include_router(manutencao.router, prefix=api_prefix)
 app.include_router(usuarios.router, prefix=api_prefix)
+app.include_router(empresas.router, prefix=api_prefix + "/empresas")
 app.include_router(configuracoes.router, prefix=api_prefix)
 app.include_router(pcp.router, prefix=api_prefix)
 app.include_router(produtividade.router, prefix=api_prefix)

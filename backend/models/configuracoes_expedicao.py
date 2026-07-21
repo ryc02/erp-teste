@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, Text
 from database import Base
 
 class ConfiguracoesExpedicao(Base):
@@ -6,6 +6,7 @@ class ConfiguracoesExpedicao(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     formato_etiqueta = Column(String(50), default="PDF_A4") # PDF_A4, ZPL_TERMICA
+    template_etiqueta = Column(Text, nullable=True)
     imprimir_dce = Column(Boolean, default=True)
     
     # Dados do Remetente Padrão (para emissão de etiquetas/DC-e)

@@ -5,6 +5,7 @@ from sqlalchemy import func
 
 from database import get_db
 from services.auth import get_current_user
+from dependencies import get_empresa_id
 import models
 from datetime import datetime, timedelta
 
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/vendas/resultados", tags=["Resultados Comerciais"])
 def get_performance(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     """
     Retorna métricas de performance de vendas: Total Faturado, Ticket Médio, 
@@ -22,10 +24,14 @@ def get_performance(
     thirty_days_ago = datetime.now() - timedelta(days=30)
     
     # Base query for approved/completed orders
-    base_query = db.query(models.PedidoVenda).filter(
+    query = db.query(models.PedidoVenda).filter(
         models.PedidoVenda.status.in_(["APROVADO", "PREPARANDO_ENVIO", "SEPARADO", "FATURADO", "PRONTO_ENVIO", "ENVIADO", "ENTREGUE"]),
         models.PedidoVenda.data_pedido >= thirty_days_ago
     )
+    if empresa_id:
+        query = query.filter(models.PedidoVenda.empresa_id == empresa_id)
+        
+    base_query = query
 
     total_faturado = base_query.with_entities(func.sum(models.PedidoVenda.valor_total)).scalar() or 0.0
     qtd_pedidos = base_query.count()
@@ -60,6 +66,7 @@ def get_performance(
 def get_curva_abc(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     """
     Gera Curva ABC de produtos baseada nos pedidos finalizados/aprovados.
@@ -68,10 +75,10 @@ def get_curva_abc(
     Classe C: resto.
     """
     # Consulta o faturamento por produto
-    vendas_produtos = db.query(
+    query = db.query(
         models.PedidoVendaItem.produto_id,
         models.Produto.nome,
-        models.Produto.codigo_sku,
+        models.Produto.sku,
         func.sum(models.PedidoVendaItem.quantidade).label("qtd_vendida"),
         func.sum(models.PedidoVendaItem.quantidade * models.PedidoVendaItem.preco_unitario).label("valor_total")
     ).join(
@@ -80,8 +87,13 @@ def get_curva_abc(
         models.Produto, models.PedidoVendaItem.produto_id == models.Produto.id
     ).filter(
         models.PedidoVenda.status.in_(["APROVADO", "PREPARANDO_ENVIO", "SEPARADO", "FATURADO", "PRONTO_ENVIO", "ENVIADO", "ENTREGUE"])
-    ).group_by(
-        models.PedidoVendaItem.produto_id, models.Produto.nome, models.Produto.codigo_sku
+    )
+    
+    if empresa_id:
+        query = query.filter(models.PedidoVenda.empresa_id == empresa_id)
+        
+    vendas_produtos = query.group_by(
+        models.PedidoVendaItem.produto_id, models.Produto.nome, models.Produto.sku
     ).order_by(
         func.sum(models.PedidoVendaItem.quantidade * models.PedidoVendaItem.preco_unitario).desc()
     ).all()
@@ -106,7 +118,7 @@ def get_curva_abc(
         resultados.append({
             "produto_id": v.produto_id,
             "nome": v.nome,
-            "sku": v.codigo_sku or "",
+            "sku": v.sku or "",
             "qtd_vendida": float(v.qtd_vendida),
             "valor_total": valor,
             "percentual_acumulado": perc_acumulado,
@@ -120,6 +132,7 @@ def get_curva_abc(
 def get_comissoes(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     """
     Retorna o relatório de comissões por representante comercial.
@@ -132,10 +145,14 @@ def get_comissoes(
 
     for rep in representantes:
         # Faturamento do representante
-        total_vendas = db.query(func.sum(models.PedidoVenda.valor_total)).filter(
+        query = db.query(func.sum(models.PedidoVenda.valor_total)).filter(
             models.PedidoVenda.representante_id == rep.id,
             models.PedidoVenda.status.in_(["APROVADO", "PREPARANDO_ENVIO", "SEPARADO", "FATURADO", "PRONTO_ENVIO", "ENVIADO", "ENTREGUE"])
-        ).scalar() or 0.0
+        )
+        if empresa_id:
+            query = query.filter(models.PedidoVenda.empresa_id == empresa_id)
+            
+        total_vendas = query.scalar() or 0.0
 
         percentual = rep.comissao_padrao or 0
         valor_comissao = (total_vendas * percentual) / 100

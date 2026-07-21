@@ -11,6 +11,7 @@ import schemas
 from services.estoque_service import EstoqueService
 from datetime import datetime
 from routers.configuracoes_vendas import get_or_create_config
+from dependencies import get_empresa_id
 
 
 router = APIRouter(prefix="/vendas", tags=["Vendas"])
@@ -46,10 +47,12 @@ def criar_pedido_venda(
     payload: schemas.PedidoVendaCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     # 1. Criar cabeçalho do pedido
     # Status padrão é EM_ABERTO, mas avaliaremos o desconto depois.
     novo_pedido = models.PedidoVenda(
+        empresa_id=empresa_id,
         tipo=payload.tipo,
         cliente_id=payload.cliente_id,
         cliente_nome=payload.cliente_nome,
@@ -60,6 +63,7 @@ def criar_pedido_venda(
         desconto_valor=payload.desconto_valor,
         observacoes=payload.observacoes,
         natureza_operacao=payload.natureza_operacao,
+        empresa_faturadora_id=payload.empresa_faturadora_id,
         status="EM_ABERTO",
         valor_total=0.0
     )
@@ -119,6 +123,7 @@ def atualizar_pedido_venda(
     pedido.desconto_valor = payload.desconto_valor
     pedido.observacoes = payload.observacoes
     pedido.natureza_operacao = payload.natureza_operacao
+    pedido.empresa_faturadora_id = payload.empresa_faturadora_id
 
     # Remove itens antigos
     db.query(models.PedidoVendaItem).filter(models.PedidoVendaItem.pedido_id == pedido_id).delete()
@@ -174,10 +179,14 @@ def listar_pedidos_venda(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    empresa_id: int = Depends(get_empresa_id)
 ):
     _ = current_user
     query = db.query(models.PedidoVenda)
     
+    if empresa_id:
+        query = query.filter(models.PedidoVenda.empresa_id == empresa_id)
+        
     if cliente_id is not None:
         query = query.filter(models.PedidoVenda.cliente_id == cliente_id)
         
@@ -248,11 +257,62 @@ def aprovar_pedido_venda(
             )
             EstoqueService.registrar_movimentacao(db, mov)
         
+        # Gerar Financeiro (Contas a Receber)
+        from models.financeiro import ContaFinanceira
+        from datetime import datetime, date
+        from dateutil.relativedelta import relativedelta
+        import re
+        
+        # ponytail: parse parcelas from observacoes instead of creating new table
+        obs = pedido.observacoes or ""
+        contas_geradas = 0
+        if "[Pagamento Configurado]" in obs:
+            linhas = obs.split("\n")
+            in_parcelas = False
+            for linha in linhas:
+                if linha.startswith("Parcelas:"):
+                    in_parcelas = True
+                    continue
+                if in_parcelas and "x - Venc:" in linha:
+                    try:
+                        # Ex: 1x - Venc: 21/08/2026 - R$ 150.00
+                        parts = linha.split("-")
+                        venc_str = parts[1].replace("Venc:", "").strip()
+                        val_str = parts[2].replace("R$", "").strip()
+                        venc_data = datetime.strptime(venc_str, "%d/%m/%Y").date()
+                        val_float = float(val_str)
+                        
+                        nova_conta = ContaFinanceira(
+                            tipo="RECEBER",
+                            status="PENDENTE",
+                            descricao=f"Ref. Pedido #{pedido.id} - {pedido.cliente_nome} (Parcela)",
+                            valor=val_float,
+                            data_vencimento=venc_data,
+                            observacoes=f"Gerada automaticamente pela aprovação do Pedido #{pedido.id}."
+                        )
+                        db.add(nova_conta)
+                        contas_geradas += 1
+                    except Exception:
+                        pass
+        
+        if contas_geradas == 0:
+            # Fallback: 1 parcela de 30 dias
+            nova_conta = ContaFinanceira(
+                tipo="RECEBER",
+                status="PENDENTE",
+                descricao=f"Ref. Pedido #{pedido.id} - {pedido.cliente_nome}",
+                valor=pedido.valor_total,
+                data_vencimento=datetime.utcnow().date() + relativedelta(days=30),
+                observacoes=f"Gerada automaticamente pela aprovação do Pedido #{pedido.id} (Padrão 30d)."
+            )
+            db.add(nova_conta)
+            contas_geradas = 1
+
         # Atualizar status do pedido
         pedido.status = "APROVADO"
         db.commit()
         
-        return {"status": "success", "message": f"Pedido #{pedido.id} aprovado e estoque baixado."}
+        return {"status": "success", "message": f"Pedido #{pedido.id} aprovado. Estoque baixado e {contas_geradas} parcela(s) gerada(s)."}
     
     except HTTPException as e:
         db.rollback()

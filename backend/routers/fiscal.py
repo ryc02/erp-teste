@@ -4,68 +4,33 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from database import get_db
+from dependencies import get_empresa_id
 import models
 from utils.validators import validar_cnpj, validar_cep, validar_numero_imovel
 
 router = APIRouter(prefix="/fiscal", tags=["Fiscal"])
 
-def get_olist_token():
-    token = os.getenv("OLIST_API_TOKEN")
-    if not token:
-        raise HTTPException(status_code=500, detail="OLIST_API_TOKEN não configurado no .env")
-    return token
-
 @router.get("/notas")
-def listar_notas_olist(db: Session = Depends(get_db)):
-    """Busca as últimas notas fiscais diretamente da API do Tiny/Olist e locais."""
-    token = get_olist_token()
-    url = "https://api.tiny.com.br/api2/notas.fiscais.pesquisa.php"
-    # Pegar as notas mais recentes
-    response = requests.post(url, data={"token": token, "formato": "json"})
-    if not response.ok:
-        raise HTTPException(status_code=500, detail="Falha ao comunicar com Olist")
-    
-    data = response.json()
-    retorno = data.get("retorno", {})
-    if retorno.get("status") == "Erro":
-        # Se não encontrou notas ou deu erro (ex: "A pesquisa não retornou registros")
-        if retorno.get("codigo_erro") == "20":
-            return []
-        raise HTTPException(status_code=400, detail=retorno.get("erros", [{}])[0].get("erro", "Erro desconhecido na Olist"))
-    
-    notas_brutas = retorno.get("notas_fiscais", [])
-    
+def listar_notas_olist(db: Session = Depends(get_db), empresa_id: int = Depends(get_empresa_id)):
+    """Busca as últimas notas fiscais (apenas locais)."""
     resultado = []
     
-    # 1. Notas da Olist
-    for item in notas_brutas:
-        n = item.get("nota_fiscal", {})
-        resultado.append({
-            "id": n.get("id"),
-            "numero": n.get("numero"),
-            "chave_acesso": n.get("chave_acesso"),
-            "destinatario": n.get("nome"),
-            "valor": float(n.get("valor", 0)),
-            "status": n.get("descricao_situacao"),
-            "data_emissao": n.get("data_emissao"),
-        })
-        
-    # 2. Notas Locais (Criadas Manualmente ou pela Malha Fina)
     if db:
-        notas_locais = db.query(models.NotaFiscal).order_by(models.NotaFiscal.id.desc()).limit(50).all()
+        query = db.query(models.NotaFiscal)
+        if empresa_id:
+            query = query.filter(models.NotaFiscal.empresa_id == empresa_id)
+        notas_locais = query.order_by(models.NotaFiscal.id.desc()).limit(100).all()
         for nl in notas_locais:
-            # Evita duplicatas se tiverem o mesmo ID (improvável, pois IDs Olist são grandes, mas por segurança)
-            if not any(r["id"] == nl.id for r in resultado):
-                resultado.append({
-                    "id": nl.id,
-                    "numero": nl.numero or "Avulsa",
-                    "chave_acesso": "",
-                    "destinatario": nl.cliente_nome or "Não Informado",
-                    "valor": float(nl.valor_nota or 0),
-                    "status": nl.descricao_situacao or "Pendente",
-                    "data_emissao": nl.data_emissao.strftime("%d/%m/%Y") if nl.data_emissao else "",
-                    "email_enviado": getattr(nl, "email_enviado", False)
-                })
+            resultado.append({
+                "id": nl.id,
+                "numero": nl.numero or "Avulsa",
+                "chave_acesso": "",
+                "destinatario": nl.cliente_nome or "Não Informado",
+                "valor": float(nl.valor_nota or 0),
+                "status": nl.descricao_situacao or "Pendente",
+                "data_emissao": nl.data_emissao.strftime("%d/%m/%Y") if nl.data_emissao else "",
+                "email_enviado": getattr(nl, "email_enviado", False)
+            })
                 
     # Ordena por ID descrescente
     resultado.sort(key=lambda x: x["id"], reverse=True)
@@ -209,23 +174,36 @@ def preparar_faturamento(pedido_id: int, db: Session = Depends(get_db)):
     rascunho["valor_produtos"] = valor_produtos
     rascunho["valor_total"] = valor_produtos + rascunho["frete"] - rascunho["desconto"]
     
-    # Estimativa de impostos (Reforma Tributária 2026 + Legado)
-    rascunho["base_icms"] = valor_produtos
-    rascunho["valor_icms"] = valor_produtos * 0.18
-    rascunho["valor_ipi"] = valor_produtos * 0.05
-    
-    # Novos impostos RTC
-    rascunho["valor_ibs"] = valor_produtos * 0.10 # Estimativa genérica IBS (10%)
-    rascunho["valor_cbs"] = valor_produtos * 0.12 # Estimativa genérica CBS (12%)
-    rascunho["valor_is"] = 0.0 # Imposto seletivo apenas para produtos específicos
+    # Estimativa de impostos baseada no Regime Tributário
+    faturadora_id = pedido.empresa_faturadora_id or pedido.empresa_id
+    empresa_faturadora = db.query(models.Empresa).filter(models.Empresa.id == faturadora_id).first()
+    regime = getattr(empresa_faturadora, 'regime_tributario', 'SIMPLES_NACIONAL')
+
+    if regime == 'SIMPLES_NACIONAL':
+        rascunho["base_icms"] = 0.0
+        rascunho["valor_icms"] = 0.0
+        rascunho["valor_ipi"] = 0.0
+        rascunho["valor_ibs"] = 0.0
+        rascunho["valor_cbs"] = 0.0
+        rascunho["valor_is"] = 0.0
+    else:
+        # Lucro Presumido / Real
+        rascunho["base_icms"] = valor_produtos
+        rascunho["valor_icms"] = valor_produtos * 0.18
+        rascunho["valor_ipi"] = valor_produtos * 0.05
+        # Novos impostos RTC
+        rascunho["valor_ibs"] = valor_produtos * 0.10 # Estimativa genérica IBS (10%)
+        rascunho["valor_cbs"] = valor_produtos * 0.12 # Estimativa genérica CBS (12%)
+        rascunho["valor_is"] = 0.0 # Imposto seletivo apenas para produtos específicos
     
     rascunho["erros_validacao"] = erros_validacao
     rascunho["pode_faturar"] = len(erros_validacao) == 0
+    rascunho["empresa_faturadora_id"] = faturadora_id
     
     return rascunho
 
 @router.post("/emitir")
-def emitir_nota(dados: Dict[Any, Any], db: Session = Depends(get_db)):
+def emitir_nota(dados: Dict[Any, Any], db: Session = Depends(get_db), empresa_id: int = Depends(get_empresa_id)):
     """Salva a NF nativamente no Venner e (futuramente) transmite para SEFAZ/Olist"""
     try:
         cliente_dados = dados.get("cliente", {})
@@ -244,8 +222,12 @@ def emitir_nota(dados: Dict[Any, Any], db: Session = Depends(get_db)):
         # 3. Validação Número do Imóvel
         numero_validado = validar_numero_imovel(numero)
 
+        # O empresa_id da nota deve ser o da empresa faturadora!
+        faturadora_id = dados.get("empresa_faturadora_id", empresa_id)
+
         # Salva cabeçalho
         db_nota = models.NotaFiscal(
+            empresa_id=faturadora_id,
             pedido_id=dados.get("pedido_id"),
             natureza_operacao=dados.get("natureza_operacao"),
             tipo=dados.get("tipo", "S"),

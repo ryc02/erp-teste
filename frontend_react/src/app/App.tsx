@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   LayoutDashboard, ShoppingCart, Package, Warehouse, DollarSign,
   Users, BarChart3, Settings, Bell, Search, ChevronDown,
-  Building2, FileText, Menu, X, Shield, Wrench, Factory, Timer, Truck, Receipt
+  Building2, FileText, Menu, X, Shield, Wrench, Factory, Timer, Truck, Receipt, AlertTriangle
 } from "lucide-react";
+import { api } from "./services/api";
+import { Badge } from "./components/ui/SharedUI";
 
 // Import Screens
 import { Dashboard } from "./screens/Dashboard";
@@ -19,6 +21,7 @@ import { NotasFiscais } from "./screens/NotasFiscais";
 
 import Compras from "./screens/Compras";
 import Expedicao from "./screens/Expedicao";
+import Empresas from "./screens/Empresas";
 import Pcp from "./screens/Pcp";
 import Manutencao from "./screens/Manutencao";
 import Produtividade from "./screens/Produtividade";
@@ -70,7 +73,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-type Module = "dashboard" | "propostas" | "pedidos" | "clientes" | "produtos" | "fornecedores" | "estoque" | "financeiro" | "fiscal" | "relatorios" | "configuracoes" | "compras" | "expedicao" | "pcp" | "manutencao" | "produtividade" | "auditoria" | "usuarios" | "representantes" | "vendas" | "faturamento";
+type Module = "dashboard" | "propostas" | "pedidos" | "clientes" | "produtos" | "fornecedores" | "estoque" | "financeiro" | "fiscal" | "relatorios" | "configuracoes" | "empresas" | "compras" | "expedicao" | "pcp" | "manutencao" | "produtividade" | "auditoria" | "usuarios" | "representantes" | "vendas" | "faturamento";
 
 type NavItem = { id: Module; label: string; icon: any; badge?: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -126,7 +129,7 @@ const navGroups: NavGroup[] = [
     label: "Sistema",
     items: [
       { id: "usuarios" as Module, label: "Usuários", icon: Users },
-      { id: "auditoria" as Module, label: "Auditoria", icon: Shield },
+      { id: "empresas" as Module, label: "Multi-Empresas", icon: Building2 },
       { id: "configuracoes" as Module, label: "Configurações", icon: Settings },
     ],
   },
@@ -136,6 +139,40 @@ function MainApp() {
   const { user, loading, logout, can } = useAuth();
   const [active, setActive] = useState<Module>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Multi-Empresa (Multi-CNPJ) State
+  const [empresas, setEmpresas] = useState<any[]>([]);
+  const [empresaAtiva, setEmpresaAtiva] = useState<string | null>(localStorage.getItem("empresa_ativa"));
+
+  // Alertas & Notifications State
+  const [alertas, setAlertas] = useState<any[]>([]);
+  const [showAlertaDropdown, setShowAlertaDropdown] = useState(false);
+
+  // Global Search State
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      api.get<any[]>("/empresas/").then(data => {
+        setEmpresas(data);
+        if (data.length > 0 && !localStorage.getItem("empresa_ativa")) {
+          localStorage.setItem("empresa_ativa", "all");
+          setEmpresaAtiva("all");
+        }
+      }).catch(console.error);
+
+      api.get<any[]>("/financeiro/alertas")
+        .then(setAlertas)
+        .catch(console.error);
+    }
+  }, [user]);
+
+  function handleTrocarEmpresa(id: string) {
+    localStorage.setItem("empresa_ativa", id);
+    setEmpresaAtiva(id);
+    window.location.reload();
+  }
 
   if (loading) {
     return (
@@ -173,6 +210,7 @@ function MainApp() {
       case "produtividade": return <Produtividade />;
       case "auditoria": return <Auditoria />;
       case "usuarios": return <Usuarios />;
+      case "empresas": return <Empresas />;
       case "configuracoes": return <Configuracoes />;
       case "relatorios": return <Relatorios />;
       default: return <Dashboard />;
@@ -269,14 +307,95 @@ function MainApp() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden md:flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-lg border border-border">
+              <Building2 size={16} className="text-muted-foreground" />
+              <select 
+                className="bg-transparent border-none text-sm focus:outline-none cursor-pointer font-medium max-w-[200px] truncate"
+                value={empresaAtiva || "all"}
+                onChange={(e) => handleTrocarEmpresa(e.target.value)}
+              >
+                <option value="all">🌎 Visão 360º (Todas)</option>
+                {empresas.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.nome_fantasia || emp.razao_social}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="relative hidden md:block">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input type="text" placeholder="Pesquisar em tudo..." className="w-64 pl-9 pr-4 py-2 bg-muted/50 border-none rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <input 
+                type="text" 
+                placeholder="Pesquisar módulo (ex: financeiro)..." 
+                value={globalSearch}
+                onChange={(e) => { setGlobalSearch(e.target.value); setShowSearchDropdown(true); }}
+                onFocus={() => setShowSearchDropdown(true)}
+                className="w-64 pl-9 pr-4 py-2 bg-muted/50 border-none rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" 
+              />
+
+              {showSearchDropdown && globalSearch.trim() && (
+                <div className="absolute left-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="p-2 text-[10px] font-bold text-muted-foreground uppercase border-b border-border">Módulos Encontrados</div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {allItems.filter(item => item.label.toLowerCase().includes(globalSearch.toLowerCase())).length === 0 ? (
+                      <div className="p-3 text-xs text-muted-foreground text-center">Nenhum módulo encontrado.</div>
+                    ) : (
+                      allItems
+                        .filter(item => item.label.toLowerCase().includes(globalSearch.toLowerCase()))
+                        .map(item => (
+                          <button
+                            key={item.id}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2"
+                            onClick={() => {
+                              setActive(item.id);
+                              setGlobalSearch("");
+                              setShowSearchDropdown(false);
+                            }}
+                          >
+                            <item.icon size={14} />
+                            <span className="font-medium">{item.label}</span>
+                          </button>
+                        ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <button className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors relative">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-card" />
-            </button>
+
+            <div className="relative">
+              <button 
+                className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors relative"
+                onClick={() => setShowAlertaDropdown(!showAlertaDropdown)}
+              >
+                <Bell size={20} />
+                {alertas.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-card" />}
+              </button>
+              
+              {showAlertaDropdown && (
+                <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="p-3 border-b border-border font-semibold text-sm flex justify-between items-center">
+                    Notificações
+                    <Badge variant={alertas.length > 0 ? "danger" : "default"}>{alertas.length} novas</Badge>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                    {alertas.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">Nenhuma notificação no momento.</div>
+                    ) : (
+                      alertas.map(alerta => (
+                        <div key={alerta.id} className="p-3 border-b border-border hover:bg-muted/50 transition-colors flex gap-3 items-start cursor-pointer" onClick={() => { setShowAlertaDropdown(false); setActive("financeiro"); }}>
+                          <div className={`mt-0.5 p-1.5 rounded-full ${alerta.tipo === 'atrasada' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                            <AlertTriangle size={14} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground leading-tight">{alerta.mensagem.split(' - ')[0]}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Valor: {alerta.mensagem.split(' - ')[1]}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
