@@ -5,7 +5,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database import get_db
-from services.auth import get_current_user
+from services.auth import get_current_user, check_role
 import models
 import schemas
 from services.estoque_service import EstoqueService
@@ -77,6 +77,11 @@ def criar_pedido_venda(
         produto = db.query(models.Produto).filter(models.Produto.id == item_payload.produto_id).first()
         if not produto:
             raise HTTPException(status_code=404, detail=f"Produto ID {item_payload.produto_id} não encontrado")
+        # GAP 3: bloquear produto inativo ou sem permissão de venda
+        if not produto.ativo:
+            raise HTTPException(status_code=400, detail=f"Produto '{produto.nome}' está inativo e não pode ser vendido.")
+        if not produto.permitir_vendas:
+            raise HTTPException(status_code=400, detail=f"Produto '{produto.nome}' não está habilitado para vendas.")
 
         novo_item = models.PedidoVendaItem(
             pedido_id=novo_pedido.id,
@@ -135,6 +140,11 @@ def atualizar_pedido_venda(
         produto = db.query(models.Produto).filter(models.Produto.id == item_payload.produto_id).first()
         if not produto:
             raise HTTPException(status_code=404, detail=f"Produto ID {item_payload.produto_id} não encontrado")
+        # GAP 3: bloquear produto inativo ou sem permissão de venda
+        if not produto.ativo:
+            raise HTTPException(status_code=400, detail=f"Produto '{produto.nome}' está inativo e não pode ser vendido.")
+        if not produto.permitir_vendas:
+            raise HTTPException(status_code=400, detail=f"Produto '{produto.nome}' não está habilitado para vendas.")
 
         novo_item = models.PedidoVendaItem(
             pedido_id=pedido.id,
@@ -212,10 +222,9 @@ def obter_pedido_venda(
 def aprovar_desconto_gerencia(
     pedido_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    # BUG 2: restrito a GERENTE ou ADMIN
+    current_user: models.User = Depends(check_role(["ADMIN", "GERENTE"])),
 ):
-    # Nota: Em um cenário real, deveríamos checar se current_user tem role 'GERENTE' ou 'ADMIN'
-    # Como não temos roles complexos definidos, vamos permitir que admin ou usuário faça, mas manteremos o log
     pedido = db.query(models.PedidoVenda).filter(models.PedidoVenda.id == pedido_id).first()
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
@@ -354,25 +363,10 @@ def faturar_pedido_venda(
         raise HTTPException(status_code=400, detail=f"Apenas pedidos PREPARANDO_ENVIO podem ser faturados. Status atual: {pedido.status}")
 
     pedido.status = "FATURADO"
-    
-    # Buscar categoria padrão de vendas
-    cat_padrao = db.query(models.CategoriaFinanceira).filter(models.CategoriaFinanceira.padrao_venda == True).first()
-    
-    # Lançar no Financeiro automaticamente
-    nova_conta = models.ContaFinanceira(
-        tipo="RECEBER",
-        status="PENDENTE",
-        descricao=f"Faturamento do Pedido #{pedido.id}",
-        valor=pedido.valor_total,
-        data_vencimento=datetime.now(),
-        pedido_id=pedido.id,
-        cliente_id=pedido.cliente_id,
-        categoria_id=cat_padrao.id if cat_padrao else None
-    )
-    db.add(nova_conta)
-    
+    # BUG 1: Conta a Receber já foi gerada na aprovação do pedido.
+    # Não geramos uma segunda aqui para evitar duplicidade financeira.
     db.commit()
-    return {"status": "success", "message": f"Pedido #{pedido.id} faturado e lançado no Financeiro com sucesso."}
+    return {"status": "success", "message": f"Pedido #{pedido.id} faturado com sucesso."}
 
 
 @router.post("/pedidos/{pedido_id}/pronto-envio")
@@ -453,10 +447,39 @@ def cancelar_pedido_venda(
     if pedido.status in ["ENTREGUE", "CANCELADO"]:
         raise HTTPException(status_code=400, detail=f"Pedidos finalizados não podem ser cancelados. Status atual: {pedido.status}")
 
-    pedido.status = "CANCELADO"
-    # Poderiamos adicionar lógica de estorno financeiro e de estoque aqui
-    db.commit()
-    return {"status": "success", "message": f"Pedido #{pedido.id} cancelado."}
+    status_com_estoque_baixado = ["APROVADO", "PREPARANDO_ENVIO", "FATURADO", "PRONTO_ENVIO", "ENVIADO"]
+
+    try:
+        # BUG 3: Estornar estoque se o pedido já tinha sido aprovado
+        if pedido.status in status_com_estoque_baixado:
+            for item in pedido.itens:
+                mov = schemas.MovimentacaoCreate(
+                    produto_id=item.produto_id,
+                    tipo=schemas.TipoMovimentacaoSchema.DEVOLUCAO,
+                    quantidade=item.quantidade,
+                    usuario=current_user.username,
+                    origem=f"Cancelamento do Pedido #{pedido.id}",
+                    observacao=f"Estorno automático por cancelamento - Cliente: {pedido.cliente_nome}"
+                )
+                EstoqueService.registrar_movimentacao(db, mov)
+
+        # BUG 3: Cancelar contas financeiras vinculadas não pagas
+        from models.financeiro import ContaFinanceira
+        db.query(ContaFinanceira).filter(
+            ContaFinanceira.pedido_id == pedido.id,
+            ContaFinanceira.status == "PENDENTE"
+        ).update({"status": "CANCELADO"}, synchronize_session=False)
+
+        pedido.status = "CANCELADO"
+        pedido.observacoes = f"{pedido.observacoes or ''}\n[Cancelado por {current_user.username} em {datetime.now().strftime('%d/%m/%Y %H:%M')}]"
+        db.commit()
+        return {"status": "success", "message": f"Pedido #{pedido.id} cancelado. Estoque e financeiro revertidos."}
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao cancelar pedido: {str(e)}")
 
 @router.delete("/pedidos/{pedido_id}")
 def excluir_pedido_venda(
@@ -482,6 +505,9 @@ def excluir_pedido_venda(
 class PedidoStatusUpdate(BaseModel):
     status: str
 
+# GAP 5: alterar-status aplica mesma lógica de negócio que os endpoints dedicados
+STATUS_REQUER_GERENCIA = ["ADMIN", "GERENTE"]
+
 @router.post("/pedidos/{pedido_id}/alterar-status")
 def alterar_status_pedido(
     pedido_id: int,
@@ -493,33 +519,79 @@ def alterar_status_pedido(
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     
-    pedido.status = payload.status.upper()
-    
-    # Integração com Financeiro
-    if pedido.status == "FATURADO":
-        # Check if already exists to avoid duplicates
-        from models.financeiro import ContaFinanceira, CategoriaFinanceira
-        existente = db.query(ContaFinanceira).filter(
-            ContaFinanceira.pedido_id == pedido.id,
-            ContaFinanceira.tipo == "RECEBER"
-        ).first()
-        
-        if not existente:
-            cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.descricao == "Receitas de Vendas").first()
-            from datetime import timedelta
-            vencimento = datetime.now() + timedelta(days=30)
-            
-            nova_conta = ContaFinanceira(
-                tipo="RECEBER",
-                descricao=f"Faturamento Pedido #{pedido.id} - {pedido.cliente_nome}",
-                valor=pedido.valor_total,
-                data_vencimento=vencimento,
-                status="PENDENTE",
-                cliente_id=pedido.cliente_id,
-                pedido_id=pedido.id,
-                categoria_id=cat.id if cat else None
-            )
-            db.add(nova_conta)
+    novo_status = payload.status.upper()
+    status_anterior = pedido.status
 
-    db.commit()
-    return {"message": "Status atualizado com sucesso", "status": pedido.status}
+    # GAP 5: bloquear status inválidos
+    if novo_status == status_anterior:
+        return {"message": "Status já é o atual", "status": status_anterior}
+
+    # Status que não podem ser alterados manualmente após fechamento
+    if status_anterior in ["ENTREGUE", "CANCELADO"]:
+        raise HTTPException(status_code=400, detail=f"Pedido já finalizado ({status_anterior}). Não é possível alterar o status.")
+
+    try:
+        # GAP 5: se estiver aprovando, aplicar a mesma lógica de baixa de estoque e geração financeira
+        if novo_status == "APROVADO" and status_anterior not in ["APROVADO", "PREPARANDO_ENVIO", "FATURADO", "PRONTO_ENVIO", "ENVIADO", "ENTREGUE"]:
+            for item in pedido.itens:
+                mov = schemas.MovimentacaoCreate(
+                    produto_id=item.produto_id,
+                    tipo=schemas.TipoMovimentacaoSchema.SAIDA_VENDA,
+                    quantidade=item.quantidade,
+                    usuario=current_user.username,
+                    origem=f"Pedido #{pedido.id} (alterar-status)",
+                    observacao=f"Baixa via alteração manual de status - Cliente: {pedido.cliente_nome}"
+                )
+                EstoqueService.registrar_movimentacao(db, mov)
+
+            # Gerar financeiro se não existir
+            from models.financeiro import ContaFinanceira, CategoriaFinanceira
+            existente = db.query(ContaFinanceira).filter(
+                ContaFinanceira.pedido_id == pedido.id,
+                ContaFinanceira.tipo == "RECEBER"
+            ).first()
+            if not existente:
+                from datetime import timedelta
+                cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.descricao == "Receitas de Vendas").first()
+                nova_conta = ContaFinanceira(
+                    tipo="RECEBER",
+                    descricao=f"Ref. Pedido #{pedido.id} - {pedido.cliente_nome}",
+                    valor=pedido.valor_total,
+                    data_vencimento=datetime.now() + timedelta(days=30),
+                    status="PENDENTE",
+                    cliente_id=pedido.cliente_id,
+                    pedido_id=pedido.id,
+                    categoria_id=cat.id if cat else None
+                )
+                db.add(nova_conta)
+
+        # GAP 5: se estiver cancelando via alterar-status, aplicar lógica de estorno
+        elif novo_status == "CANCELADO":
+            status_com_estoque_baixado = ["APROVADO", "PREPARANDO_ENVIO", "FATURADO", "PRONTO_ENVIO", "ENVIADO"]
+            if status_anterior in status_com_estoque_baixado:
+                for item in pedido.itens:
+                    mov = schemas.MovimentacaoCreate(
+                        produto_id=item.produto_id,
+                        tipo=schemas.TipoMovimentacaoSchema.DEVOLUCAO,
+                        quantidade=item.quantidade,
+                        usuario=current_user.username,
+                        origem=f"Cancelamento do Pedido #{pedido.id} (alterar-status)",
+                        observacao=f"Estorno automático por cancelamento - Cliente: {pedido.cliente_nome}"
+                    )
+                    EstoqueService.registrar_movimentacao(db, mov)
+            from models.financeiro import ContaFinanceira
+            db.query(ContaFinanceira).filter(
+                ContaFinanceira.pedido_id == pedido.id,
+                ContaFinanceira.status == "PENDENTE"
+            ).update({"status": "CANCELADO"}, synchronize_session=False)
+
+        pedido.status = novo_status
+        db.commit()
+        return {"message": "Status atualizado com sucesso", "status": pedido.status}
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao alterar status: {str(e)}")

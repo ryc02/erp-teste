@@ -33,7 +33,6 @@ class PedidoVenda(Base):
     peso_liquido = Column(Float, default=0.0)
     volumes = Column(Float, default=1.0)
     status_separacao = Column(String, default="PENDENTE") # PENDENTE, AGUARDANDO_SEPARACAO, EM_SEPARACAO, SEPARADO, CONFERIDO
-    natureza_operacao = Column(String, nullable=True)
 
     cliente = relationship("ClienteComercial")
     representante = relationship("RepresentanteComercial", foreign_keys=[representante_id])

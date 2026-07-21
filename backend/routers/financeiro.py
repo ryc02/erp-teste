@@ -67,12 +67,18 @@ def get_contas(
     contas = query.order_by(ContaFinanceira.data_vencimento.asc()).all()
     
     # Monta resposta customizada com dados do cliente/pedido se houver
+    from datetime import date
+    hoje = date.today()
     res = []
     for c in contas:
+        # M6: status ATRASADO calculado dinamicamente (sem alterar o BD)
+        status_exibido = c.status
+        if c.status == "PENDENTE" and c.data_vencimento and c.data_vencimento.date() < hoje:
+            status_exibido = "ATRASADO"
         res.append({
             "id": c.id,
             "tipo": c.tipo,
-            "status": c.status,
+            "status": status_exibido,
             "descricao": c.descricao,
             "valor": c.valor,
             "data_vencimento": c.data_vencimento.isoformat() if c.data_vencimento else None,

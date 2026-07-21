@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from database import get_db
-from services.auth import get_current_user
+from services.auth import get_current_user, check_role
 import models
 from schemas import compras as compras_schemas
 from schemas.movimentacoes import MovimentacaoCreate, TipoMovimentacaoSchema
@@ -89,7 +89,8 @@ def obter_ordem_compra(
 def aprovar_ordem_compra(
     ordem_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    # GAP 7: apenas ADMIN ou GERENTE podem aprovar OCs e gerar Contas a Pagar
+    current_user: models.User = Depends(check_role(["ADMIN", "GERENTE"]))
 ):
     oc = db.query(models.OrdemCompra).filter(models.OrdemCompra.id == ordem_id).first()
     if not oc:
@@ -126,7 +127,8 @@ def aprovar_ordem_compra(
 def receber_ordem_compra(
     ordem_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    # GAP 7: apenas ADMIN ou GERENTE podem confirmar recebimento e dar entrada no estoque
+    current_user: models.User = Depends(check_role(["ADMIN", "GERENTE", "OPERADOR"]))
 ):
     oc = db.query(models.OrdemCompra).filter(models.OrdemCompra.id == ordem_id).first()
     if not oc:
